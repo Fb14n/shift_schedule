@@ -2,8 +2,9 @@ name: Build & Release Flutter
 
 on:
   push:
-    tags:
-      - 'v*'   # nur starten, wenn du ein Tag wie v1.0.0 pushst
+    branches:
+      - develop
+      - main
 
 jobs:
   build-android:
