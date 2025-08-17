@@ -1,5 +1,8 @@
 name: Build & Release Flutter
 
+permissions:
+  contents: write
+  
 on:
   push:
     branches:
