@@ -3,18 +3,23 @@ name: Build & Release Flutter
 on:
   push:
     branches:
-      - develop
       - main
-    tags:
-        - 'v*.*.*'
+      - develop
 
 jobs:
-  build-android:
+  build-and-release:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache
+            build
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -27,14 +32,26 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Build App Bundle
-        run: flutter build appbundle --release
+      # --- Automatisch Tag erzeugen ---
+      - name: Generate Release Tag
+        id: tag
+        run: |
+          # hole die aktuelle Anzahl der Tags
+          COUNT=$(git tag | wc -l)
+          NEW_TAG="v$((COUNT+1))"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_ENV
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag $NEW_TAG
+          git push origin $NEW_TAG
+          echo "Generated tag: $NEW_TAG"
 
-      - name: Upload Release APK & AAB
+      # --- Release erstellen ---
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ env.new_tag }}
           files: |
             build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
