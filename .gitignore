@@ -121,3 +121,5 @@ app.*.symbols
 .idea/workspace.xml
 
 .DS_Store
+
+assets/tables
