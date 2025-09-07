@@ -18,6 +18,7 @@ class CustomScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ApiService apiService = ApiService();
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: ThemeManager.themeModeNotifier,
       builder: (context, themeMode, child) {
@@ -47,48 +48,56 @@ class CustomScaffold extends StatelessWidget {
                 ),
               ],
             ),
-            drawer: Drawer(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  DrawerHeader(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor,
+            drawer: FutureBuilder<Map<String, dynamic>>(
+              future: apiService.fetchUserDetails(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else {
+                  final userDetails = snapshot.data!;
+                  final userName = userDetails['name'] ?? 'Unknown';
+                  final vacationDays = userDetails['vacation_days'] ?? 0;
+                  final sickDays = userDetails['sick_days'] ?? 0;
+
+                  return Drawer(
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        DrawerHeader(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                          ),
+                          child: Text(
+                            userName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                            ),
+                          ),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.beach_access),
+                          title: Text('$vacationDays Tage Resturlaub'),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.sick),
+                          title: Text('$sickDays Tage Krank'),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.logout),
+                          title: const Text('Abmelden'),
+                          onTap: () async {
+                            await apiService.logout();
+                            context.pushReplacement('/login');
+                          },
+                        ),
+                      ],
                     ),
-                    child: const Text(
-                      'hans Peter',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Symbols.beach_access),
-                    title: const Text('3 Tage Resturlaub'),
-                    onTap: () {
-                      log('Urlaub', name: 'CustomScaffold');
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Symbols.sick),
-                    title: const Text('13 Tage Krank'),
-                    onTap: () {
-                      log('Krank', name: 'CustomScaffold');
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.logout),
-                    title: const Text('Abmelden'),
-                    onTap: () {
-                      log('Erfolgreich abgemeldet', name: 'CustomScaffold');
-                      final ApiService apiService = ApiService();
-                      apiService.logout();
-                      context.pushReplacement('/login');
-                    },
-                  ),
-                ],
-              ),
+                  );
+                }
+              },
             ),
             body: body,
           ),

@@ -56,7 +56,7 @@ function authenticateToken(req, res, next) {
   const token = authHeader && authHeader.split(" ")[1];
   if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, process.env.JWT_SECRET || "secret", (err, user) => {
+  jwt.verify(token, JWT_SECRET, (err, user) => {
       if (err) return res.sendStatus(403);
       req.user = user;
       next();
@@ -141,6 +141,40 @@ app.get("/items", authenticateToken, async (req, res) => {
     res.json({ user: req.user.username, items: result.rows });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/user/details", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const userResult = await pool.query(
+      "SELECT name FROM users WHERE id = $1",
+      [userId]
+    );
+
+    const vacationResult = await pool.query(
+      "SELECT COUNT(*) AS vacation_days FROM shifts WHERE user_id = $1 AND shift_type = 'Urlaub'",
+      [userId]
+    );
+
+    const sickResult = await pool.query(
+      "SELECT COUNT(*) AS sick_days FROM shifts WHERE user_id = $1 AND shift_type IN ('Krank', 'Krankheit')",
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      name: userResult.rows[0].name,
+      vacation_days: parseInt(vacationResult.rows[0].vacation_days),
+      sick_days: parseInt(sickResult.rows[0].sick_days),
+    });
+  } catch (err) {
+    console.error("Error fetching user details:", err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 });

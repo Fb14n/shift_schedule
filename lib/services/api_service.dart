@@ -22,6 +22,22 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> fetchUserDetails() async {
+    final token = await getToken();
+    if (token == null) throw Exception('No token stored');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/user/details'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to fetch user details: ${response.statusCode} ${response.body}');
+    }
+  }
+
   Future<String> login(String username, String password) async {
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
