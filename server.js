@@ -37,13 +37,16 @@ async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
-      username TEXT UNIQUE NOT NULL,
+      name TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL
     );
   `);
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS items (
+    CREATE TABLE IF NOT EXISTS shifts (
       id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      shift_date DATE NOT NULL,
+      shift_type TEXT NOT NULL,
       name TEXT NOT NULL
     );
   `);

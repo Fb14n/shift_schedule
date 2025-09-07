@@ -123,3 +123,7 @@ app.*.symbols
 .DS_Store
 
 assets/tables
+.idea
+android
+ios
+web
