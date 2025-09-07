@@ -16,6 +16,10 @@ dependencies:
   calendar_view: 1.4.0
   table_calendar: ^3.0.8
   material_symbols_icons: ^4.2815.1
+  path_provider: ^2.0.11
+  http: ^1.5.0
+  flutter_secure_storage: ^8.0.0
+  shared_preferences: ^2.5.3
 
 
 dev_dependencies:
@@ -26,5 +30,6 @@ dev_dependencies:
 
 
 flutter:
-
+  assets:
+    - assets/tables/Mitarbeiter-Kalender-2025.xlsx
   uses-material-design: true

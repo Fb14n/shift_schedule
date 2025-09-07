@@ -1,6 +1,8 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/utils/toggle_theme.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -30,8 +32,7 @@ class CustomScaffold extends StatelessWidget {
                 builder: (context) => IconButton(
                   icon: const Icon(Symbols.person),
                   onPressed: () {
-                    log('User icon pressed', name: 'CustomScaffold');
-                    Scaffold.of(context).openDrawer(); // Open the drawer
+                    Scaffold.of(context).openDrawer();
                   },
                 ),
               ),
@@ -80,7 +81,10 @@ class CustomScaffold extends StatelessWidget {
                     leading: const Icon(Icons.logout),
                     title: const Text('Abmelden'),
                     onTap: () {
-                      log('Abmelden ausgewählt', name: 'CustomScaffold');
+                      log('Erfolgreich abgemeldet', name: 'CustomScaffold');
+                      final ApiService apiService = ApiService();
+                      apiService.logout();
+                      context.pushReplacement('/login');
                     },
                   ),
                 ],
