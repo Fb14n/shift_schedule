@@ -22,44 +22,17 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
---
--- Name: items; Type: TABLE; Schema: public; Owner: myuser
---
 
-CREATE TABLE public.items (
-    id integer NOT NULL,
-    name text NOT NULL
-);
-
-
-ALTER TABLE public.items OWNER TO myuser;
-
---
--- Name: items_id_seq; Type: SEQUENCE; Schema: public; Owner: myuser
---
-
-CREATE SEQUENCE public.items_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.items_id_seq OWNER TO myuser;
-
---
--- Name: items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: myuser
---
-
-ALTER SEQUENCE public.items_id_seq OWNED BY public.items.id;
-
+DROP TABLE IF EXISTS items CASCADE;
+DROP TABLE IF EXISTS shifts CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP SEQUENCE IF EXISTS items_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS shifts_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS users_id_seq CASCADE;
 
 --
 -- Name: shifts; Type: TABLE; Schema: public; Owner: myuser
 --
-
 CREATE TABLE public.shifts (
     id integer NOT NULL,
     user_id integer NOT NULL,
@@ -96,7 +69,6 @@ ALTER SEQUENCE public.shifts_id_seq OWNED BY public.shifts.id;
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: myuser
 --
-
 CREATE TABLE public.users (
     id integer NOT NULL,
     name text NOT NULL,
