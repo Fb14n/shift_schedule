@@ -9,7 +9,7 @@ class ApiService {
   static const String baseUrl = 'http://127.0.0.1:3000';
   final storage = FlutterSecureStorage();
 
-  Future<List<Map<String, dynamic>>> fetchShiftsWithUsers(String token) async {
+  Future<List<Map<String, dynamic>>> fetchShifts(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/shifts'),
       headers: {'Authorization': 'Bearer $token'},
@@ -32,6 +32,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
+      log('User details: ${jsonDecode(response.body)}', name: 'ApiService');
       return jsonDecode(response.body);
     } else {
       throw Exception('Failed to fetch user details: ${response.statusCode} ${response.body}');

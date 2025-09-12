@@ -79,8 +79,8 @@ app.get("/shifts", async (req, res) => {
     const userId = payload.userId;
 
     const result = await pool.query(
-      "SELECT shift_date, shift_type FROM shifts WHERE user_id = $1",
-      [userId]
+        'SELECT s.shift_date, st.type_name FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
+        [userId]
     );
 
     res.json(result.rows);
@@ -114,7 +114,7 @@ app.post("/login", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, name, password FROM users WHERE name = $1",
+      "SELECT id, first_name, last_name, employee_id, password FROM users WHERE first_name = $1",
       [username]
     );
 
@@ -138,32 +138,22 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.get("/items", authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM items");
-    res.json({ user: req.user.username, items: result.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 app.get("/user/details", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
 
     const userResult = await pool.query(
-      "SELECT name FROM users WHERE id = $1",
+      "SELECT first_name FROM users WHERE id = $1",
       [userId]
     );
 
     const vacationResult = await pool.query(
-      "SELECT COUNT(*) AS vacation_days FROM shifts WHERE user_id = $1 AND shift_type = 'Urlaub'",
+      "SELECT COUNT(*) AS vacation_days FROM shifts WHERE user_id = $1 AND shift_type_id = '5'",
       [userId]
     );
 
     const sickResult = await pool.query(
-      "SELECT COUNT(*) AS sick_days FROM shifts WHERE user_id = $1 AND shift_type IN ('Krank', 'Krankheit')",
+      "SELECT COUNT(*) AS sick_days FROM shifts WHERE user_id = $1 AND shift_type_id = '4'",
       [userId]
     );
 
@@ -172,23 +162,12 @@ app.get("/user/details", authenticateToken, async (req, res) => {
     }
 
     res.json({
-      name: userResult.rows[0].name,
+      name: userResult.rows[0].first_name,
       vacation_days: parseInt(vacationResult.rows[0].vacation_days),
       sick_days: parseInt(sickResult.rows[0].sick_days),
     });
   } catch (err) {
     console.error("Error fetching user details:", err.stack);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.post("/items", authenticateToken, async (req, res) => {
-  const { name } = req.body;
-  try {
-    await pool.query("INSERT INTO items (name) VALUES ($1)", [name]);
-    res.json({ msg: "Item added", user: req.user.username });
-  } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

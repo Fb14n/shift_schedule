@@ -6,11 +6,11 @@ Future<Map<DateTime, String>> loadShifts(String token) async {
   final Map<DateTime, String> shifts = {};
 
   try {
-    final data = await apiService.fetchShiftsWithUsers(token);
+    final data = await apiService.fetchShifts(token);
 
     for (final shift in data) {
       final date = DateTime.tryParse(shift['shift_date']);
-      final type = shift['shift_type'];
+      final type = shift['type_name'];
 
       if (date != null && type != null) {
         shifts[DateTime(date.year, date.month, date.day)] = type;
