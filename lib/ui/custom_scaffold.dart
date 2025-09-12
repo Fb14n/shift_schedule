@@ -57,7 +57,10 @@ class CustomScaffold extends StatelessWidget {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else {
                   final userDetails = snapshot.data!;
-                  final userName = userDetails['name'] ?? 'Unknown';
+                  final firstName = userDetails['first_name'] ?? '';
+                  final lastName = userDetails['last_name'] ?? '';
+                  final employeeId = userDetails['employee_id'] ?? '';
+                  //final userName = userDetails['name'] ?? 'Unknown';
                   final vacationDays = userDetails['vacation_days'] ?? 0;
                   final sickDays = userDetails['sick_days'] ?? 0;
 
@@ -70,7 +73,7 @@ class CustomScaffold extends StatelessWidget {
                             color: Theme.of(context).primaryColor,
                           ),
                           child: Text(
-                            userName,
+                            '$firstName $lastName\nID: ${employeeId.toString()}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 24,
@@ -89,8 +92,30 @@ class CustomScaffold extends StatelessWidget {
                           leading: const Icon(Icons.logout),
                           title: const Text('Abmelden'),
                           onTap: () async {
-                            await apiService.logout();
-                            context.pushReplacement('/login');
+                            final shouldLogout = await showDialog<bool>(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Text('Abmelden bestätigen'),
+                                  content: const Text('Möchten Sie sich wirklich abmelden?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(true), // Cancel
+                                      child: const Text('Ja'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(false), // Confirm
+                                      child: const Text('Nein'),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+
+                            if (shouldLogout == true) {
+                              await apiService.logout();
+                              context.pushReplacement('/login');
+                            }
                           },
                         ),
                       ],

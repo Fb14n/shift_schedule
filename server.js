@@ -143,7 +143,7 @@ app.get("/user/details", authenticateToken, async (req, res) => {
     const userId = req.user.userId;
 
     const userResult = await pool.query(
-      "SELECT first_name FROM users WHERE id = $1",
+      "SELECT first_name, last_name, employee_id FROM users WHERE id = $1",
       [userId]
     );
 
@@ -162,7 +162,9 @@ app.get("/user/details", authenticateToken, async (req, res) => {
     }
 
     res.json({
-      name: userResult.rows[0].first_name,
+      first_name: userResult.rows[0].first_name,
+      last_name: userResult.rows[0].last_name,
+      employee_id: userResult.rows[0].employee_id,
       vacation_days: parseInt(vacationResult.rows[0].vacation_days),
       sick_days: parseInt(sickResult.rows[0].sick_days),
     });

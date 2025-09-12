@@ -133,6 +133,8 @@ class _CalendarViewState extends State<CalendarView> {
         child: Column(
           children: [
             TableCalendar(
+              locale: 'de_DE',
+              startingDayOfWeek: StartingDayOfWeek.monday,
               firstDay: _firstDay,
               lastDay: _lastDay,
               focusedDay: _focusedDay,
