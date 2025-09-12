@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
-import 'package:shift_schedule/ui/widgets/calender_day_decoration.dart';
+import 'package:shift_schedule/ui/widgets/day_cell.dart';
 import 'package:shift_schedule/utils/load_shifts.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -43,8 +43,6 @@ class _CalendarViewState extends State<CalendarView> {
     final firstMonth = DateTime(_firstDay.year, _firstDay.month, 1);
     final lastMonth = DateTime(_lastDay.year, _lastDay.month, 1);
     setState(() {
-      //_isPrevEnabled = _focusedDay.isAfter(DateTime(_firstDay.year, _firstDay.month));
-      //_isNextEnabled = _focusedDay.isBefore(DateTime(_lastDay.year, _lastDay.month));
       _isPrevEnabled = focusedMonth.isAfter(firstMonth);
       _isNextEnabled = focusedMonth.isBefore(lastMonth);
     });
@@ -87,41 +85,6 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
-
-  Widget _buildDayCell(DateTime day, String? shift, {Color? highlight}) {
-    Color backgroundColor;
-
-    switch (shift) {
-      case 'Frühschicht':
-        backgroundColor = Colors.green;
-        break;
-      case 'Spätschicht':
-        backgroundColor = Colors.blue;
-        break;
-      case 'Urlaub':
-        backgroundColor = Colors.orange;
-        break;
-      case 'Krankheit':
-      case 'Krank':
-        backgroundColor = Colors.red;
-        break;
-      default:
-        backgroundColor = Colors.transparent;
-    }
-
-    return Container(
-      decoration: CalendarDayDecoration(
-        color: highlight ?? backgroundColor,
-      ).decoration,
-      margin: const EdgeInsets.all(4),
-      alignment: Alignment.center,
-      child: Text(
-        '${day.day}',
-        style: const TextStyle(color: Colors.black),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -154,13 +117,13 @@ class _CalendarViewState extends State<CalendarView> {
               },
               calendarBuilders: CalendarBuilders(
                 defaultBuilder: (context, day, focusedDay) {
-                  return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)]);
+                  return DayCell(day: day,shift: _shifts[DateTime(day.year, day.month, day.day)],);
                 },
                 todayBuilder: (context, day, focusedDay) {
-                  return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.purple);
+                  return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.purple);
                 },
                 selectedBuilder: (context, day, focusedDay) {
-                  return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.yellow);
+                  return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.yellow);
                 },
               ),
               headerStyle: HeaderStyle(
