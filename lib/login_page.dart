@@ -18,13 +18,36 @@ class _LoginPageState extends State<LoginPage> {
   final ApiService _apiService = ApiService();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final token = await _secureStorage.read(key: 'auth_token');
+    final expiry = await _secureStorage.read(key: 'token_expiry');
+
+    if (token != null && expiry != null) {
+      final expiryDate = DateTime.parse(expiry);
+      if (DateTime.now().isBefore(expiryDate)) {
+        context.pushReplacement('/calendar');
+      } else {
+        await _secureStorage.delete(key: 'auth_token');
+        await _secureStorage.delete(key: 'token_expiry');
+      }
+    }
+  }
+
   Future<void> _login() async {
     try {
       final token = await _apiService.login(
         _usernameController.text,
         _passwordController.text,
       );
+      final expiryDate = DateTime.now().add(const Duration(hours: 2));
       await _secureStorage.write(key: 'auth_token', value: token);
+      await _secureStorage.write(key: 'token_expiry', value: expiryDate.toIso8601String());
       context.pushReplacement('/calendar');
     } catch (e) {
       log('Login failed: ${e}', name: 'ApiService');

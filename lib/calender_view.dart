@@ -15,7 +15,12 @@ class CalendarView extends StatefulWidget {
 }
 
 class _CalendarViewState extends State<CalendarView> {
-  final DateTime _firstDay = DateTime.now().subtract(const Duration(days: 30));
+  //final DateTime _firstDay = DateTime.now().subtract(const Duration(days: 30));
+  final DateTime _firstDay = DateTime(
+    DateTime.now().month == 1 ? DateTime.now().year - 1 : DateTime.now().year,
+    DateTime.now().month == 1 ? 12 : DateTime.now().month - 1,
+    1,
+  );
   final DateTime _lastDay = DateTime.now().add(const Duration(days: 180));
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -23,11 +28,26 @@ class _CalendarViewState extends State<CalendarView> {
   Map<DateTime, String> _shifts = {};
   bool _isLoading = true;
   final ApiService apiService = ApiService();
+  bool _isNextEnabled = true;
+  bool _isPrevEnabled = true;
 
   @override
   void initState() {
     super.initState();
+    _updateNavigationButtons();
     _loadShifts();
+  }
+
+  void _updateNavigationButtons() {
+    final focusedMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final firstMonth = DateTime(_firstDay.year, _firstDay.month, 1);
+    final lastMonth = DateTime(_lastDay.year, _lastDay.month, 1);
+    setState(() {
+      //_isPrevEnabled = _focusedDay.isAfter(DateTime(_firstDay.year, _firstDay.month));
+      //_isNextEnabled = _focusedDay.isBefore(DateTime(_lastDay.year, _lastDay.month));
+      _isPrevEnabled = focusedMonth.isAfter(firstMonth);
+      _isNextEnabled = focusedMonth.isBefore(lastMonth);
+    });
   }
 
   Future<void> _loadShifts() async {
@@ -108,45 +128,56 @@ class _CalendarViewState extends State<CalendarView> {
       return const Center(child: CircularProgressIndicator());
     }
     return CustomScaffold(
-      body: Column(
-        children: [
-          TableCalendar(
-            firstDay: _firstDay,
-            lastDay: _lastDay,
-            focusedDay: _focusedDay,
-            calendarFormat: _calendarFormat,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
-                _focusedDay = focusedDay;
-              });
-            },
-            calendarBuilders: CalendarBuilders(
-              defaultBuilder: (context, day, focusedDay) {
-                return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)]);
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            TableCalendar(
+              firstDay: _firstDay,
+              lastDay: _lastDay,
+              focusedDay: _focusedDay,
+              calendarFormat: _calendarFormat,
+              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+              onDaySelected: (selectedDay, focusedDay) {
+                setState(() {
+                  _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+                  _focusedDay = focusedDay;
+                });
               },
-              todayBuilder: (context, day, focusedDay) {
-                return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.purple);
+              onPageChanged: (focusedDay) {
+                setState(() {
+                  _focusedDay = focusedDay;
+                  _updateNavigationButtons();
+                });
               },
-              selectedBuilder: (context, day, focusedDay) {
-                return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.yellow);
-              },
-            ),
-            headerStyle: HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-            ),
-          ),
-          if (_selectedDay != null)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Schicht: ${_selectedDay!.day}.${_selectedDay!.month}.${_selectedDay!.year} - ${_shifts[_selectedDay] ?? 'Keine Schicht'}',
-                style: const TextStyle(fontSize: 16),
+              calendarBuilders: CalendarBuilders(
+                defaultBuilder: (context, day, focusedDay) {
+                  return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)]);
+                },
+                todayBuilder: (context, day, focusedDay) {
+                  return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.purple);
+                },
+                selectedBuilder: (context, day, focusedDay) {
+                  return _buildDayCell(day, _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.yellow);
+                },
+              ),
+              headerStyle: HeaderStyle(
+                leftChevronVisible: _isPrevEnabled,
+                rightChevronVisible: _isNextEnabled,
+                formatButtonVisible: false,
+                titleCentered: true,
               ),
             ),
-        ],
+            if (_selectedDay != null)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Schicht: ${_selectedDay!.day}.${_selectedDay!.month}.${_selectedDay!.year} - ${_shifts[_selectedDay] ?? 'Keine Schicht'}',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

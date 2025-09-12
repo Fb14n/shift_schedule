@@ -50,6 +50,8 @@ class ApiService {
       final data = json.decode(response.body);
       if (data['access_token'] != null) {
         saveToken(data['access_token']);
+        final expiryDate = DateTime.now().add(const Duration(hours: 2));
+        await storage.write(key: 'token_expiry', value: expiryDate.toIso8601String());
         log('Login successful, token saved', name: 'ApiService');
         return data['access_token'];
       } else {
