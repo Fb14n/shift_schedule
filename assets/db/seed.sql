@@ -22,6 +22,14 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
+-- Tabellen und Sequenzen löschen, falls vorhanden
+DROP TABLE IF EXISTS public.shifts CASCADE;
+DROP TABLE IF EXISTS public.shift_types CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+DROP SEQUENCE IF EXISTS public.shifts_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.shift_types_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.users_id_seq CASCADE;
+
 --
 -- Name: shift_types; Type: TABLE; Schema: public; Owner: myuser
 --
