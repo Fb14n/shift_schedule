@@ -90,59 +90,83 @@ class _CalendarViewState extends State<CalendarView> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+    final isCurrentMonth = _focusedDay.year == DateTime.now().year &&
+        _focusedDay.month == DateTime.now().month;
+
     return CustomScaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            TableCalendar(
-              locale: 'de_DE',
-              startingDayOfWeek: StartingDayOfWeek.monday,
-              firstDay: _firstDay,
-              lastDay: _lastDay,
-              focusedDay: _focusedDay,
-              calendarFormat: _calendarFormat,
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: (selectedDay, focusedDay) {
-                setState(() {
-                  _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
-                  _focusedDay = focusedDay;
-                });
-              },
-              onPageChanged: (focusedDay) {
-                setState(() {
-                  _focusedDay = focusedDay;
-                  _updateNavigationButtons();
-                });
-              },
-              calendarBuilders: CalendarBuilders(
-                defaultBuilder: (context, day, focusedDay) {
-                  return DayCell(day: day,shift: _shifts[DateTime(day.year, day.month, day.day)],);
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                TableCalendar(
+                  locale: 'de_DE',
+                  startingDayOfWeek: StartingDayOfWeek.monday,
+                  firstDay: _firstDay,
+                  lastDay: _lastDay,
+                  focusedDay: _focusedDay,
+                  calendarFormat: _calendarFormat,
+                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+                      _focusedDay = focusedDay;
+                    });
+                  },
+                  onPageChanged: (focusedDay) {
+                    setState(() {
+                      _focusedDay = focusedDay;
+                      _updateNavigationButtons();
+                    });
+                  },
+                  calendarBuilders: CalendarBuilders(
+                    defaultBuilder: (context, day, focusedDay) {
+                      return DayCell(day: day,shift: _shifts[DateTime(day.year, day.month, day.day)],);
+                    },
+                    todayBuilder: (context, day, focusedDay) {
+                      return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.purple);
+                    },
+                    selectedBuilder: (context, day, focusedDay) {
+                      return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.yellow);
+                    },
+                  ),
+                  headerStyle: HeaderStyle(
+                    leftChevronVisible: _isPrevEnabled,
+                    rightChevronVisible: _isNextEnabled,
+                    formatButtonVisible: false,
+                    titleCentered: true,
+                  ),
+                ),
+                if (_selectedDay != null)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Schicht: ${_selectedDay!.day}.${_selectedDay!.month}.${_selectedDay!.year} - ${_shifts[_selectedDay] ?? 'Keine Schicht'}',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Visibility(
+              visible: !isCurrentMonth,
+              child: FloatingActionButton(
+                onPressed: () {
+                  setState(() {
+                    _focusedDay = DateTime.now();
+                    _updateNavigationButtons();
+                  });
                 },
-                todayBuilder: (context, day, focusedDay) {
-                  return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.purple);
-                },
-                selectedBuilder: (context, day, focusedDay) {
-                  return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.yellow);
-                },
-              ),
-              headerStyle: HeaderStyle(
-                leftChevronVisible: _isPrevEnabled,
-                rightChevronVisible: _isNextEnabled,
-                formatButtonVisible: false,
-                titleCentered: true,
+                child: const Icon(Icons.today),
+                tooltip: 'Zum aktuellen Monat springen',
               ),
             ),
-            if (_selectedDay != null)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Schicht: ${_selectedDay!.day}.${_selectedDay!.month}.${_selectedDay!.year} - ${_shifts[_selectedDay] ?? 'Keine Schicht'}',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
