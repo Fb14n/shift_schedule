@@ -175,7 +175,7 @@ app.get("/user/details", authenticateToken, async (req, res) => {
 });
 
 // ---- Start Server ----
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+const host = process.env.HOST || '0.0.0.0';
+app.listen(3000, host, () => {
+  console.log(`🚀 Server running on :${host}:3000`);
 });
