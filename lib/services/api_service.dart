@@ -1,12 +1,13 @@
 import 'dart:developer';
 
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.178.200:3000';
+  static final String? baseUrl = dotenv.env['API_BASE_URL'];
   final storage = FlutterSecureStorage();
 
   Future<List<Map<String, dynamic>>> fetchShifts(String token) async {

@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
+import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/day_cell.dart';
 import 'package:shift_schedule/utils/load_shifts.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -64,8 +65,8 @@ class _CalendarViewState extends State<CalendarView> {
         return;
       }
 
-      final shifts = await loadShifts(token); // API-Call
-      if (!mounted) return; // Widget wurde evtl. disposed
+      final shifts = await loadShifts(token);
+      if (!mounted) return;
 
       setState(() {
         _shifts = shifts;
@@ -76,7 +77,6 @@ class _CalendarViewState extends State<CalendarView> {
       log('Error loading shifts: $e', name: 'CalendarView');
       log('$stack', name: 'CalendarView');
 
-      // Loader beenden, sonst Infinite Loading
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -161,8 +161,8 @@ class _CalendarViewState extends State<CalendarView> {
                     _updateNavigationButtons();
                   });
                 },
-                child: const Icon(Icons.today),
                 tooltip: 'Zum aktuellen Monat springen',
+                child: const Icon(Icons.today),
               ),
             ),
           ),
