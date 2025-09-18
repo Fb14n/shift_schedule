@@ -20,43 +20,58 @@ class DayCell extends StatelessWidget {
     required this.day,
     required this.shift,
     this.highlight,
-    this.borderColor = FEZTheme.borderColorDefault,
+    this.borderColor,
+    this.textColor,
   });
 
   final DateTime day;
   final String? shift;
   final Color? highlight;
-  final Color borderColor;
+  final Color? borderColor;
+  final Color? textColor;
 
-
-  Color getBackgroundColor() {
+  Map<String, Color> getColors() {
     switch (shift) {
       case 'Frühschicht':
-        return FEZTheme.dayCellColors.earlyShift;
+        return {
+          'background': FEZTheme.dayCellColors.earlyShift,
+        };
       case 'Spätschicht':
-        return FEZTheme.dayCellColors.lateShift;
+        return {
+          'background': FEZTheme.dayCellColors.lateShift,
+          'text': FEZTheme.dayCellColors.onLateShift,
+        };
       case 'Urlaub':
-        return FEZTheme.dayCellColors.holiday;
+        return {
+          'background': FEZTheme.dayCellColors.holiday,
+          'text': FEZTheme.dayCellColors.onHoliday,
+        };
       case 'Krankheit':
       case 'Krank':
-        return FEZTheme.dayCellColors.sick;
+        return {
+          'background': FEZTheme.dayCellColors.sick,
+          'text': FEZTheme.dayCellColors.onSick,
+        };
       default:
-        return FEZTheme.dayCellColors.defaultColor;
+        return {
+          'background': FEZTheme.dayCellColors.defaultColor,
+        };
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = getColors();
     return Container(
       decoration: CalendarDayDecoration(
-        color: highlight ?? getBackgroundColor(),
-        borderColor: borderColor,
+        color: highlight ?? colors['background']!,
+        borderColor: borderColor ?? FEZTheme.borderColorDefault(context),
       ).decoration,
       margin: const EdgeInsets.all(4),
       alignment: Alignment.center,
       child: Text(
         '${day.day}',
-        style: const TextStyle(color: Colors.black),
+        style: TextStyle(color: textColor ?? colors['text']),
       ),
     );
   }

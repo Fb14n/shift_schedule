@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
@@ -94,11 +95,11 @@ class _CalendarViewState extends State<CalendarView> {
         _focusedDay.month == DateTime.now().month;
 
     return CustomScaffold(
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Stack(
+          children: [
+            Column(
               children: [
                 TableCalendar(
                   locale: 'de_DE',
@@ -122,13 +123,26 @@ class _CalendarViewState extends State<CalendarView> {
                   },
                   calendarBuilders: CalendarBuilders(
                     defaultBuilder: (context, day, focusedDay) {
-                      return DayCell(day: day,shift: _shifts[DateTime(day.year, day.month, day.day)],);
+                      return DayCell(
+                        day: day,
+                        shift: _shifts[DateTime(day.year, day.month, day.day)],
+                      );
                     },
                     todayBuilder: (context, day, focusedDay) {
-                      return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.purple);
+                      return DayCell(
+                        day: day,
+                        shift: _shifts[DateTime(day.year, day.month, day.day)],
+                        highlight: Colors.purple,
+                        textColor: Colors.white,
+                      );
                     },
                     selectedBuilder: (context, day, focusedDay) {
-                      return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.yellow);
+                      return DayCell(
+                        day: day,
+                        shift: _shifts[DateTime(day.year, day.month, day.day)],
+                        highlight: Colors.yellow,
+                        textColor: Colors.black,
+                      );
                     },
                   ),
                   headerStyle: HeaderStyle(
@@ -148,25 +162,26 @@ class _CalendarViewState extends State<CalendarView> {
                   ),
               ],
             ),
-          ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: Visibility(
-              visible: !isCurrentMonth,
-              child: FloatingActionButton(
-                onPressed: () {
-                  setState(() {
-                    _focusedDay = DateTime.now();
-                    _updateNavigationButtons();
-                  });
-                },
-                tooltip: 'Zum aktuellen Monat springen',
-                child: const Icon(Icons.today),
+            Positioned(
+              bottom: 24,
+              right: 24,
+              child: Visibility(
+                visible: !isCurrentMonth,
+                child: FloatingActionButton(
+                  onPressed: () {
+                    setState(() {
+                      _focusedDay = DateTime.now();
+                      _updateNavigationButtons();
+                    });
+                  },
+                  tooltip: 'Zum aktuellen Monat springen',
+                  backgroundColor: FEZTheme.primary,
+                  child: const Icon(Symbols.today_rounded, color: FEZTheme.onPrimary),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shift_schedule/services/api_service.dart';
+import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/utils/toggle_theme.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
@@ -60,7 +61,6 @@ class CustomScaffold extends StatelessWidget {
                   final firstName = userDetails['first_name'] ?? '';
                   final lastName = userDetails['last_name'] ?? '';
                   final employeeId = userDetails['employee_id'] ?? '';
-                  //final userName = userDetails['name'] ?? 'Unknown';
                   final vacationDays = userDetails['vacation_days'] ?? 0;
                   final sickDays = userDetails['sick_days'] ?? 0;
 
@@ -70,7 +70,7 @@ class CustomScaffold extends StatelessWidget {
                       children: [
                         DrawerHeader(
                           decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
+                            color: FEZTheme.primary,
                           ),
                           child: Text(
                             '$firstName $lastName\nID: ${employeeId.toString()}',
@@ -101,11 +101,11 @@ class CustomScaffold extends StatelessWidget {
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.of(context).pop(true), // Cancel
-                                      child: const Text('Ja'),
+                                      child: const Text('Ja', style: TextStyle(color: FEZTheme.secondary),),
                                     ),
                                     TextButton(
                                       onPressed: () => Navigator.of(context).pop(false), // Confirm
-                                      child: const Text('Nein'),
+                                      child: const Text('Nein', style: TextStyle(color: FEZTheme.error),),
                                     ),
                                   ],
                                 );
