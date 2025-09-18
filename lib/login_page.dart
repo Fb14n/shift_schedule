@@ -50,7 +50,7 @@ class _LoginPageState extends State<LoginPage> {
       await _secureStorage.write(key: 'token_expiry', value: expiryDate.toIso8601String());
       context.pushReplacement('/calendar');
     } catch (e) {
-      log('Login failed: ${e}', name: 'ApiService');
+      log('Login failed: ${e}', name: 'LoginPage');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$e')),
       );

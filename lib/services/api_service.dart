@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 
 
 class ApiService {
-  static final String? baseUrl = dotenv.env['API_BASE_URL'];
+  static final String? baseUrl = dotenv.env['BASE_URL'];
   final storage = FlutterSecureStorage();
 
   Future<List<Map<String, dynamic>>> fetchShifts(String token) async {
@@ -41,6 +41,7 @@ class ApiService {
   }
 
   Future<String> login(String username, String password) async {
+    log('API-Base-Url: ${dotenv.env['BASE_URL']}', name: 'ApiService');
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
       headers: {'Content-Type': 'application/json'},
