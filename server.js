@@ -3,15 +3,12 @@ import pkg from "pg";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import cors from "cors";
+import fs from "fs";
 
 const { Pool } = pkg;
-
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: "*" }));
-
-const fs = require('fs');
-const { Pool } = require('pg');
 
 // -------------------------
 // Database Pool
@@ -41,21 +38,17 @@ const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 
 // Seed-SQL-Datei lesen
 const seedFile = './seed.sql';
-fs.readFile(seedFile, 'utf8', (err, data) => {
+fs.readFile(seedFile, 'utf8', async (err, data) => {
   if (err) {
     console.error('Fehler beim Lesen der seed.sql:', err);
-    process.exit(1);
+    return;
   }
-
-  // SQL-Befehle ausführen
-  pool.query(data, (err, res) => {
-    if (err) {
-      console.error('Fehler beim Ausführen der seed.sql:', err);
-    } else {
-      console.log('Datenbank erfolgreich initialisiert.');
-    }
-    pool.end(); // Verbindung schließen
-  });
+  try {
+    await pool.query(data);
+    console.log('✅ Seed erfolgreich ausgeführt');
+  } catch (err) {
+    console.error('❌ Fehler beim Ausführen der seed.sql:', err.stack);
+  }
 });
 
 // ---- DB Init ----
