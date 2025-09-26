@@ -2,16 +2,20 @@ import express from "express";
 import pkg from "pg";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import cors from "cors";
 
 const { Pool } = pkg;
 
 const app = express();
 app.use(express.json());
+app.use(cors({ origin: "*" }));
 
 // -------------------------
 // Database Pool
 // -------------------------
 const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
   host: process.env.DATABASE_HOST || "postgres",
   port: 5432,
   user: process.env.DATABASE_USER || "myuser",
@@ -110,8 +114,8 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
+  console.log("Login request body:", req.body);
   const { username, password } = req.body;
-
   try {
     const result = await pool.query(
       "SELECT id, first_name, last_name, employee_id, password FROM users WHERE first_name = $1",
@@ -134,7 +138,7 @@ app.post("/login", async (req, res) => {
 
   } catch (err) {
     console.error("Login error:", err.stack);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: err.message});
   }
 });
 
