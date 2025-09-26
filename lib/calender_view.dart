@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
@@ -32,12 +33,29 @@ class _CalendarViewState extends State<CalendarView> {
   final ApiService apiService = ApiService();
   bool _isNextEnabled = true;
   bool _isPrevEnabled = true;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _updateNavigationButtons();
     _loadShifts();
+    _checkAdminStatus();
+  }
+
+  Future<void> _checkAdminStatus() async {
+    try {
+      final apiService = ApiService();
+      final userDetails = await apiService.fetchUserDetails();
+      log('User details: $userDetails', name: 'CalendarView');
+      if (userDetails['first_name'] == 'admin') {
+        setState(() {
+          _isAdmin = true;
+        });
+      }
+    } catch (e) {
+      log('Error checking admin status: $e', name: 'CalendarView');
+    }
   }
 
   void _updateNavigationButtons() {
@@ -178,6 +196,42 @@ class _CalendarViewState extends State<CalendarView> {
                   backgroundColor: FEZTheme.primary,
                   child: const Icon(Symbols.today_rounded, color: FEZTheme.onPrimary),
                 ),
+              ),
+            ),
+            Positioned(
+              bottom: 24,
+              right: 24,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Visibility(
+                    visible: _isAdmin,
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        // Navigate to edit page or perform edit action
+                        context.pushNamed('holidayEditor');
+                      },
+                      tooltip: 'Edit',
+                      backgroundColor: FEZTheme.secondary,
+                      child: const Icon(Icons.edit, color: FEZTheme.onSecondary),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Visibility(
+                    visible: !isCurrentMonth,
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        setState(() {
+                          _focusedDay = DateTime.now();
+                          _updateNavigationButtons();
+                        });
+                      },
+                      tooltip: 'Zum aktuellen Monat springen',
+                      backgroundColor: FEZTheme.primary,
+                      child: const Icon(Symbols.today_rounded, color: FEZTheme.onPrimary),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
