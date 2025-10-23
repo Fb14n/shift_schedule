@@ -3,8 +3,8 @@ import 'package:shift_schedule/ui/themes/theme.dart';
 
 
 class ShiftEntry {
-  final int startHour; // 0-23 (can be fractional hours if needed)
-  final int endHour; // 1-24
+  final double startHour; // Geändert zu double für Minuten
+  final double endHour;   // Geändert zu double für Minuten
   final String label;
   final Color color;
   final Color? textColor;

@@ -9,9 +9,7 @@ import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/day_cell.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:shift_schedule/ui/widgets/day_detail_popup.dart';
-import 'package:shift_schedule/ui/widgets/day_timeline.dart';
 import 'package:shift_schedule/utils/get_color_contrast.dart';
-
 
 class CalendarView extends StatefulWidget {
   const CalendarView({super.key});
@@ -21,7 +19,6 @@ class CalendarView extends StatefulWidget {
 }
 
 class _CalendarViewState extends State<CalendarView> {
-  //final DateTime _firstDay = DateTime.now().subtract(const Duration(days: 30));
   final DateTime _firstDay = DateTime(
     DateTime.now().month == 1 ? DateTime.now().year - 1 : DateTime.now().year,
     DateTime.now().month == 1 ? 12 : DateTime.now().month - 1,
@@ -31,7 +28,8 @@ class _CalendarViewState extends State<CalendarView> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   final CalendarFormat _calendarFormat = CalendarFormat.month;
-  Map<DateTime, String> _shifts = {};
+  // --- ÄNDERUNG 1: Den Typ der _shifts-Map anpassen ---
+  Map<DateTime, Map<String, dynamic>> _shifts = {};
   bool _isLoading = true;
   final ApiService apiService = ApiService();
   bool _isNextEnabled = true;
@@ -48,7 +46,6 @@ class _CalendarViewState extends State<CalendarView> {
     _checkAdminStatus();
   }
 
-  // --- NEUE METHODE zum Laden der Farben ---
   Future<void> _loadShiftColors() async {
     try {
       final types = await apiService.getShiftTypes();
@@ -56,8 +53,11 @@ class _CalendarViewState extends State<CalendarView> {
       final Map<String, Color> textColorMap = {};
       for (var type in types) {
         final colorString = type['type_color'] as String?;
-        if (colorString != null && colorString.startsWith('#') && colorString.length == 7) {
-          final colorValue = int.parse(colorString.substring(1), radix: 16) + 0xFF000000;
+        if (colorString != null &&
+            colorString.startsWith('#') &&
+            colorString.length == 7) {
+          final colorValue =
+              int.parse(colorString.substring(1), radix: 16) + 0xFF000000;
           final backgroundColor = Color(colorValue);
           final typeName = type['type_name'] as String;
 
@@ -75,7 +75,6 @@ class _CalendarViewState extends State<CalendarView> {
       log('Error loading shift colors: $e', name: 'CalendarView');
     }
   }
-  // --- ENDE NEUE METHODE ---
 
   Future<void> _checkAdminStatus() async {
     try {
@@ -83,7 +82,7 @@ class _CalendarViewState extends State<CalendarView> {
       final userDetails = await apiService.fetchUserDetails();
       log('User details: $userDetails', name: 'CalendarView');
       if (userDetails['first_name'] == 'Bob') {
-        if(mounted) {
+        if (mounted) {
           setState(() {
             _isAdmin = true;
           });
@@ -98,7 +97,7 @@ class _CalendarViewState extends State<CalendarView> {
     final focusedMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final firstMonth = DateTime(_firstDay.year, _firstDay.month, 1);
     final lastMonth = DateTime(_lastDay.year, _lastDay.month, 1);
-    if(mounted) {
+    if (mounted) {
       setState(() {
         _isPrevEnabled = focusedMonth.isAfter(firstMonth);
         _isNextEnabled = focusedMonth.isBefore(lastMonth);
@@ -106,8 +105,8 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
-   Future<void> _loadAllData() async {
-    if(mounted) {
+  Future<void> _loadAllData() async {
+    if (mounted) {
       setState(() {
         _isLoading = true;
       });
@@ -127,6 +126,7 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
+  // --- ÄNDERUNG 2: _loadShifts anpassen, um die ganze Map zu speichern ---
   Future<void> _loadShifts() async {
     try {
       final token = await apiService.getToken();
@@ -134,14 +134,15 @@ class _CalendarViewState extends State<CalendarView> {
         log('No token found', name: 'CalendarView');
         return;
       }
-      final shiftsData = await apiService.fetchShifts(token); // Annahme: api_service hat fetchShifts
+      final shiftsData = await apiService.fetchShifts(token);
       if (!mounted) return;
 
-      final Map<DateTime, String> shiftsMap = {};
+      final Map<DateTime, Map<String, dynamic>> shiftsMap = {};
       for (var shift in shiftsData) {
         final date = DateTime.parse(shift['shift_date']);
         final dayOnly = DateTime(date.year, date.month, date.day);
-        shiftsMap[dayOnly] = shift['type_name'];
+        // Das gesamte Schicht-Objekt speichern, nicht nur den Namen
+        shiftsMap[dayOnly] = shift;
       }
 
       setState(() {
@@ -154,21 +155,16 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
+  // --- ÄNDERUNG 3: _showDayPopup komplett überarbeiten ---
   void _showDayPopup(DateTime selectedDay) {
-    List<ShiftEntry> parsed = [];
-    final raw = _shifts[DateTime(selectedDay.year, selectedDay.month, selectedDay.day)];
-    if (raw != null) {
-      final parts = raw.split(RegExp(r'[,\;]')).map((s) => s.trim());
-      for (final p in parts) {
-        final m = RegExp(r'(\\d{1,2})(?::\\d{2})?-(\\d{1,2})(?::\\d{2})?').firstMatch(p);
-        if (m != null) {
-          final sh = int.parse(m.group(1)!);
-          final eh = int.parse(m.group(2)!);
-          parsed.add(ShiftEntry(startHour: sh, endHour: eh, label: p, color: _shiftColors[p] ?? Colors.blueAccent, textColor: _shiftTextColors[p]));
-        } else {
-          parsed.add(ShiftEntry(startHour: 0, endHour: 24, label: p, color: _shiftColors[p] ?? Colors.grey, textColor: _shiftTextColors[p]));
-        }
-      }
+    final dayKey = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+
+    // Die Schichtdaten für den Tag als Liste von Maps vorbereiten.
+    final List<Map<String, dynamic>> shiftsForDay = [];
+    if (_shifts.containsKey(dayKey)) {
+      // Füge die gefundene Schicht zur Liste hinzu.
+      // In Zukunft könnte dies erweitert werden, falls mehrere Schichten pro Tag möglich sind.
+      shiftsForDay.add(_shifts[dayKey]!);
     }
 
     showGeneralDialog(
@@ -177,7 +173,9 @@ class _CalendarViewState extends State<CalendarView> {
       barrierLabel: 'Tag schließen',
       transitionDuration: const Duration(milliseconds: 280),
       pageBuilder: (context, anim1, anim2) {
-        return DayDetailPopup(day: selectedDay, shifts: parsed);
+        // Die Liste der Schicht-Maps direkt an das Popup übergeben.
+        // Das Popup kümmert sich um die Umwandlung in ShiftEntry-Objekte.
+        return DayDetailPopup(day: selectedDay, shifts: shiftsForDay);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curved = Curves.easeOut.transform(animation.value);
@@ -205,7 +203,7 @@ class _CalendarViewState extends State<CalendarView> {
             Column(
               children: [
                 TableCalendar(
-                  rowHeight: MediaQuery.of(context).size.height * 0.6/5,
+                  rowHeight: MediaQuery.of(context).size.height * 0.6 / 5,
                   locale: 'de_DE',
                   startingDayOfWeek: StartingDayOfWeek.monday,
                   firstDay: _firstDay,
@@ -215,7 +213,8 @@ class _CalendarViewState extends State<CalendarView> {
                   selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                   onDaySelected: (selectedDay, focusedDay) {
                     setState(() {
-                      _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+                      _selectedDay = DateTime(
+                          selectedDay.year, selectedDay.month, selectedDay.day);
                       _focusedDay = focusedDay;
                     });
                     _showDayPopup(selectedDay);
@@ -226,9 +225,11 @@ class _CalendarViewState extends State<CalendarView> {
                       _updateNavigationButtons();
                     });
                   },
+                  // --- ÄNDERUNG 4: CalendarBuilders anpassen ---
                   calendarBuilders: CalendarBuilders(
                     defaultBuilder: (context, day, focusedDay) {
-                      final shiftType = _shifts[DateTime(day.year, day.month, day.day)];
+                      final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
+                      final shiftType = shiftData?['type_name'] as String?;
                       return DayCell(
                         day: day,
                         shiftColor: _shiftColors[shiftType],
@@ -237,7 +238,8 @@ class _CalendarViewState extends State<CalendarView> {
                       );
                     },
                     todayBuilder: (context, day, focusedDay) {
-                      final shiftType = _shifts[DateTime(day.year, day.month, day.day)];
+                      final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
+                      final shiftType = shiftData?['type_name'] as String?;
                       return DayCell(
                         day: day,
                         shift: shiftType,
@@ -246,7 +248,8 @@ class _CalendarViewState extends State<CalendarView> {
                       );
                     },
                     selectedBuilder: (context, day, focusedDay) {
-                      final shiftType = _shifts[DateTime(day.year, day.month, day.day)];
+                      final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
+                      final shiftType = shiftData?['type_name'] as String?;
                       return DayCell(
                         day: day,
                         shift: shiftType,
@@ -282,11 +285,11 @@ class _CalendarViewState extends State<CalendarView> {
                             },
                             tooltip: 'Feiertage bearbeiten',
                             backgroundColor: CHRONOSTheme.secondary,
-                            child: const Icon(Icons.edit_calendar, color: CHRONOSTheme.onSecondary),
+                            child: const Icon(Icons.edit_calendar,
+                                color: CHRONOSTheme.onSecondary),
                           ),
                         ],
-                      )
-                  ),
+                      )),
                   const SizedBox(height: 8),
                   Visibility(
                     visible: !isCurrentMonth,
@@ -300,7 +303,8 @@ class _CalendarViewState extends State<CalendarView> {
                       },
                       tooltip: 'Zum aktuellen Monat springen',
                       backgroundColor: CHRONOSTheme.secondary,
-                      child: const Icon(Symbols.today_rounded, color: CHRONOSTheme.onSecondary),
+                      child: const Icon(Symbols.today_rounded,
+                          color: CHRONOSTheme.onSecondary),
                     ),
                   ),
                 ],
