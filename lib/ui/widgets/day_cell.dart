@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 
@@ -34,28 +36,34 @@ class DayCell extends StatelessWidget {
     switch (shift) {
       case 'Frühschicht':
         return {
-          'background': FEZTheme.dayCellColors.earlyShift,
+          'background': CHRONOSTheme.dayCellColors.earlyShift,
         };
       case 'Spätschicht':
         return {
-          'background': FEZTheme.dayCellColors.lateShift,
-          'text': FEZTheme.dayCellColors.onLateShift,
+          'background': CHRONOSTheme.dayCellColors.lateShift,
+          'text': CHRONOSTheme.dayCellColors.onLateShift,
         };
       case 'Urlaub':
         return {
-          'background': FEZTheme.dayCellColors.holiday,
-          'text': FEZTheme.dayCellColors.onHoliday,
+          'background': CHRONOSTheme.dayCellColors.holiday,
+          'text': CHRONOSTheme.dayCellColors.onHoliday,
         };
       case 'Krankheit':
       case 'Krank':
         return {
-          'background': FEZTheme.dayCellColors.sick,
-          'text': FEZTheme.dayCellColors.onSick,
+          'background': CHRONOSTheme.dayCellColors.sick,
+          'text': CHRONOSTheme.dayCellColors.onSick,
         };
       default:
         return {
-          'background': FEZTheme.dayCellColors.defaultColor,
+          'background': CHRONOSTheme.dayCellColors.defaultColor,
         };
+    }
+  }
+  getTodayColor() {
+    if (DateTime.now().day == day.day) {
+      log("Today: ${day.day}, Shift: ${shift}, Colors: ${getColors()}");
+      return getColors()['background']!;
     }
   }
 
@@ -65,13 +73,51 @@ class DayCell extends StatelessWidget {
     return Container(
       decoration: CalendarDayDecoration(
         color: highlight ?? colors['background']!,
-        borderColor: borderColor ?? FEZTheme.borderColorDefault(context),
+        borderColor: borderColor ?? CHRONOSTheme.borderColorDefault(context),
       ).decoration,
-      margin: const EdgeInsets.all(4),
-      alignment: Alignment.center,
-      child: Text(
-        '${day.day}',
-        style: TextStyle(color: textColor ?? colors['text']),
+      margin: EdgeInsets.fromLTRB(2,4,2,0),
+      alignment: Alignment.topCenter,
+      padding: const EdgeInsets.fromLTRB(0,4,0,0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              padding: EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: getTodayColor(),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '${day.day}',
+                style: TextStyle(color: textColor),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (shift != null)
+            Container(
+              height: 20,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: colors['background']!,
+              ),
+              alignment: Alignment.center,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  shift!,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

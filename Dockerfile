@@ -4,8 +4,8 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
-
+RUN npm ci --unsafe-perm --no-audit --progress=false \
+    && npm rebuild bcrypt --build-from-source
 COPY . .
 
 EXPOSE 3000

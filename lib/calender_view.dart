@@ -48,7 +48,7 @@ class _CalendarViewState extends State<CalendarView> {
       final apiService = ApiService();
       final userDetails = await apiService.fetchUserDetails();
       log('User details: $userDetails', name: 'CalendarView');
-      if (userDetails['first_name'] == 'admin') {
+      if (userDetails['first_name'] == 'Bob') {
         setState(() {
           _isAdmin = true;
         });
@@ -70,7 +70,7 @@ class _CalendarViewState extends State<CalendarView> {
 
   Future<void> _loadShifts() async {
     setState(() {
-      _isLoading = true; // sicherstellen, dass Loader angezeigt wird
+      _isLoading = true;
     });
 
     try {
@@ -114,12 +114,13 @@ class _CalendarViewState extends State<CalendarView> {
 
     return CustomScaffold(
       body: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(10),
         child: Stack(
           children: [
             Column(
               children: [
                 TableCalendar(
+                  rowHeight: MediaQuery.of(context).size.height * 0.6/5,
                   locale: 'de_DE',
                   startingDayOfWeek: StartingDayOfWeek.monday,
                   firstDay: _firstDay,
@@ -143,6 +144,7 @@ class _CalendarViewState extends State<CalendarView> {
                     defaultBuilder: (context, day, focusedDay) {
                       return DayCell(
                         day: day,
+                        highlight: DayCellColors().defaultColor,
                         shift: _shifts[DateTime(day.year, day.month, day.day)],
                       );
                     },
@@ -150,16 +152,18 @@ class _CalendarViewState extends State<CalendarView> {
                       return DayCell(
                         day: day,
                         shift: _shifts[DateTime(day.year, day.month, day.day)],
-                        highlight: Colors.purple,
-                        textColor: Colors.white,
+                        highlight: DayCellColors().defaultColor,
+                        //highlight: Colors.purple,
+                        //textColor: Colors.white,
                       );
                     },
                     selectedBuilder: (context, day, focusedDay) {
                       return DayCell(
                         day: day,
                         shift: _shifts[DateTime(day.year, day.month, day.day)],
-                        highlight: Colors.yellow,
-                        textColor: Colors.black,
+                        highlight: DayCellColors().defaultColor,
+                        //highlight: Colors.yellow,
+                        //textColor: Colors.black,
                       );
                     },
                   ),
@@ -183,24 +187,6 @@ class _CalendarViewState extends State<CalendarView> {
             Positioned(
               bottom: 24,
               right: 24,
-              child: Visibility(
-                visible: !isCurrentMonth,
-                child: FloatingActionButton(
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime.now();
-                      _updateNavigationButtons();
-                    });
-                  },
-                  tooltip: 'Zum aktuellen Monat springen',
-                  backgroundColor: FEZTheme.primary,
-                  child: const Icon(Symbols.today_rounded, color: FEZTheme.onPrimary),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 24,
-              right: 24,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -212,11 +198,11 @@ class _CalendarViewState extends State<CalendarView> {
                         context.pushNamed('holidayEditor');
                       },
                       tooltip: 'Edit',
-                      backgroundColor: FEZTheme.secondary,
-                      child: const Icon(Icons.edit, color: FEZTheme.onSecondary),
+                      backgroundColor: CHRONOSTheme.secondary,
+                      child: const Icon(Icons.edit, color: CHRONOSTheme.onSecondary),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   Visibility(
                     visible: !isCurrentMonth,
                     child: FloatingActionButton(
@@ -227,8 +213,8 @@ class _CalendarViewState extends State<CalendarView> {
                         });
                       },
                       tooltip: 'Zum aktuellen Monat springen',
-                      backgroundColor: FEZTheme.primary,
-                      child: const Icon(Symbols.today_rounded, color: FEZTheme.onPrimary),
+                      backgroundColor: CHRONOSTheme.primary,
+                      child: const Icon(Symbols.today_rounded, color: CHRONOSTheme.onPrimary),
                     ),
                   ),
                 ],

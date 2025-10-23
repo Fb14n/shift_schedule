@@ -70,7 +70,7 @@ class CustomScaffold extends StatelessWidget {
                       children: [
                         DrawerHeader(
                           decoration: BoxDecoration(
-                            color: FEZTheme.primary,
+                            color: CHRONOSTheme.primary,
                           ),
                           child: Text(
                             '$firstName $lastName\nID: ${employeeId.toString()}',
@@ -101,11 +101,11 @@ class CustomScaffold extends StatelessWidget {
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.of(context).pop(true), // Cancel
-                                      child: const Text('Ja', style: TextStyle(color: FEZTheme.secondary),),
+                                      child: const Text('Ja', style: TextStyle(color: CHRONOSTheme.secondary),),
                                     ),
                                     TextButton(
                                       onPressed: () => Navigator.of(context).pop(false), // Confirm
-                                      child: const Text('Nein', style: TextStyle(color: FEZTheme.error),),
+                                      child: const Text('Nein', style: TextStyle(color: CHRONOSTheme.error),),
                                     ),
                                   ],
                                 );

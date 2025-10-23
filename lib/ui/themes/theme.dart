@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class DayCellColors {
   DayCellColors();
-  final Color earlyShift = Colors.transparent;
+  final Color earlyShift = Colors.red;
   final Color lateShift = Color(0xFFccffcc);
   final Color onLateShift = Colors.black;
   final Color sick = Color(0xFFFFCCCC);
@@ -13,7 +13,7 @@ class DayCellColors {
   final Color defaultColor = Colors.transparent;
 }
 
-class FEZTheme {
+class CHRONOSTheme {
   // Define common colors
   //static const Color borderColorDefault = Colors.black;
   static Color borderColorDefault(BuildContext context) {

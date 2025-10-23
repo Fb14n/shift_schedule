@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       routerConfig: goRouter,
       title: 'Shift Schedule',
-      theme: FEZTheme.lightTheme,
+      theme: CHRONOSTheme.lightTheme,
     );
   }
 }
