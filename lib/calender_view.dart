@@ -1,8 +1,11 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
+import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/day_cell.dart';
 import 'package:shift_schedule/utils/load_shifts.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -30,12 +33,29 @@ class _CalendarViewState extends State<CalendarView> {
   final ApiService apiService = ApiService();
   bool _isNextEnabled = true;
   bool _isPrevEnabled = true;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _updateNavigationButtons();
     _loadShifts();
+    _checkAdminStatus();
+  }
+
+  Future<void> _checkAdminStatus() async {
+    try {
+      final apiService = ApiService();
+      final userDetails = await apiService.fetchUserDetails();
+      log('User details: $userDetails', name: 'CalendarView');
+      if (userDetails['first_name'] == 'Bob') {
+        setState(() {
+          _isAdmin = true;
+        });
+      }
+    } catch (e) {
+      log('Error checking admin status: $e', name: 'CalendarView');
+    }
   }
 
   void _updateNavigationButtons() {
@@ -50,7 +70,7 @@ class _CalendarViewState extends State<CalendarView> {
 
   Future<void> _loadShifts() async {
     setState(() {
-      _isLoading = true; // sicherstellen, dass Loader angezeigt wird
+      _isLoading = true;
     });
 
     try {
@@ -64,8 +84,8 @@ class _CalendarViewState extends State<CalendarView> {
         return;
       }
 
-      final shifts = await loadShifts(token); // API-Call
-      if (!mounted) return; // Widget wurde evtl. disposed
+      final shifts = await loadShifts(token);
+      if (!mounted) return;
 
       setState(() {
         _shifts = shifts;
@@ -76,7 +96,6 @@ class _CalendarViewState extends State<CalendarView> {
       log('Error loading shifts: $e', name: 'CalendarView');
       log('$stack', name: 'CalendarView');
 
-      // Loader beenden, sonst Infinite Loading
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -94,13 +113,14 @@ class _CalendarViewState extends State<CalendarView> {
         _focusedDay.month == DateTime.now().month;
 
     return CustomScaffold(
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
+      body: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Stack(
+          children: [
+            Column(
               children: [
                 TableCalendar(
+                  rowHeight: MediaQuery.of(context).size.height * 0.6/5,
                   locale: 'de_DE',
                   startingDayOfWeek: StartingDayOfWeek.monday,
                   firstDay: _firstDay,
@@ -122,13 +142,29 @@ class _CalendarViewState extends State<CalendarView> {
                   },
                   calendarBuilders: CalendarBuilders(
                     defaultBuilder: (context, day, focusedDay) {
-                      return DayCell(day: day,shift: _shifts[DateTime(day.year, day.month, day.day)],);
+                      return DayCell(
+                        day: day,
+                        highlight: DayCellColors().defaultColor,
+                        shift: _shifts[DateTime(day.year, day.month, day.day)],
+                      );
                     },
                     todayBuilder: (context, day, focusedDay) {
-                      return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.purple);
+                      return DayCell(
+                        day: day,
+                        shift: _shifts[DateTime(day.year, day.month, day.day)],
+                        highlight: DayCellColors().defaultColor,
+                        //highlight: Colors.purple,
+                        //textColor: Colors.white,
+                      );
                     },
                     selectedBuilder: (context, day, focusedDay) {
-                      return DayCell(day: day, shift: _shifts[DateTime(day.year, day.month, day.day)], highlight: Colors.yellow);
+                      return DayCell(
+                        day: day,
+                        shift: _shifts[DateTime(day.year, day.month, day.day)],
+                        highlight: DayCellColors().defaultColor,
+                        //highlight: Colors.yellow,
+                        //textColor: Colors.black,
+                      );
                     },
                   ),
                   headerStyle: HeaderStyle(
@@ -148,25 +184,44 @@ class _CalendarViewState extends State<CalendarView> {
                   ),
               ],
             ),
-          ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: Visibility(
-              visible: !isCurrentMonth,
-              child: FloatingActionButton(
-                onPressed: () {
-                  setState(() {
-                    _focusedDay = DateTime.now();
-                    _updateNavigationButtons();
-                  });
-                },
-                child: const Icon(Icons.today),
-                tooltip: 'Zum aktuellen Monat springen',
+            Positioned(
+              bottom: 24,
+              right: 24,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Visibility(
+                    visible: _isAdmin,
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        // Navigate to edit page or perform edit action
+                        context.pushNamed('holidayEditor');
+                      },
+                      tooltip: 'Edit',
+                      backgroundColor: CHRONOSTheme.secondary,
+                      child: const Icon(Icons.edit, color: CHRONOSTheme.onSecondary),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Visibility(
+                    visible: !isCurrentMonth,
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        setState(() {
+                          _focusedDay = DateTime.now();
+                          _updateNavigationButtons();
+                        });
+                      },
+                      tooltip: 'Zum aktuellen Monat springen',
+                      backgroundColor: CHRONOSTheme.primary,
+                      child: const Icon(Symbols.today_rounded, color: CHRONOSTheme.onPrimary),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

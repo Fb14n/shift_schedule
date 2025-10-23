@@ -2,16 +2,20 @@ import express from "express";
 import pkg from "pg";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import cors from "cors";
+import fs from "fs";
 
 const { Pool } = pkg;
-
 const app = express();
 app.use(express.json());
+app.use(cors({ origin: "*" }));
 
 // -------------------------
 // Database Pool
 // -------------------------
 const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
   host: process.env.DATABASE_HOST || "postgres",
   port: 5432,
   user: process.env.DATABASE_USER || "myuser",
@@ -31,6 +35,21 @@ pool.connect()
 // JWT Secret
 // -------------------------
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
+
+// Seed-SQL-Datei lesen
+const seedFile = '.assets/db/seed.sql';
+fs.readFile(seedFile, 'utf8', async (err, data) => {
+  if (err) {
+    console.error('Fehler beim Lesen der seed.sql:', err);
+    return;
+  }
+  try {
+    await pool.query(data);
+    console.log('✅ Seed erfolgreich ausgeführt');
+  } catch (err) {
+    console.error('❌ Fehler beim Ausführen der seed.sql:', err.stack);
+  }
+});
 
 // ---- DB Init ----
 async function initDB() {
@@ -110,8 +129,8 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
+  console.log("Login request body:", req.body);
   const { username, password } = req.body;
-
   try {
     const result = await pool.query(
       "SELECT id, first_name, last_name, employee_id, password FROM users WHERE first_name = $1",
@@ -134,7 +153,7 @@ app.post("/login", async (req, res) => {
 
   } catch (err) {
     console.error("Login error:", err.stack);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: err.message});
   }
 });
 
