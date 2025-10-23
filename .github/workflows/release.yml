@@ -35,8 +35,8 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Install dependencies
-        run: flutter pub get
+      - name: Upgrade dependencies
+        run: flutter pub upgrade
 
       - name: Clean Flutter project
         run: flutter clean
