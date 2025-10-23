@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shift_schedule/ui/themes/theme.dart';
 import 'day_timeline.dart';
 
 class DayDetailPopup extends StatelessWidget {
@@ -18,7 +19,7 @@ class DayDetailPopup extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
+            color: Colors.white,//CHRONOSTheme.onBackground,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 12)],
           ),
@@ -41,7 +42,7 @@ class DayDetailPopup extends StatelessWidget {
               const SizedBox(height: 8),
               Expanded(
                 child: shifts.isEmpty
-                    ? Center(child: Text('Keine Schicht', style: TextStyle(color: Colors.grey[600])))
+                    ? Center(child: Text('Keine Schicht'))
                     : DayTimeline(shifts: shifts),
               ),
             ],

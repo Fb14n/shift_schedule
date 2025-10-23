@@ -86,28 +86,23 @@ function authenticateToken(req, res, next) {
   }
 
 // --- HILFSFUNKTION ---
-// Konvertiert eine Zahl in einen #RRGGBB Hex-String
 function toHexColor(colorValue) {
     if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
         return colorValue; // Ist bereits ein Hex-String
     }
-    // Konvertiert Integer zu Hex und füllt mit Nullen auf 6 Stellen auf
     const hex = Number(colorValue).toString(16).padStart(6, '0');
     return `#${hex.toUpperCase()}`;
 }
 
 // ---- Routes ----
-
-// KORREKTUR 1: /shifts-Route angepasst
 app.get("/shifts", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const result = await pool.query(
-        'SELECT s.id, s.shift_date, st.type_name, st.type_color FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
+        'SELECT s.id, s.shift_date, st.type_name, st.type_color, st.type_time_start, st.type_time_end FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
         [userId]
     );
 
-    // Stelle sicher, dass die Farbe immer ein Hex-String ist
     const shiftsWithHexColor = result.rows.map(shift => ({
         ...shift,
         type_color: toHexColor(shift.type_color)
@@ -121,12 +116,10 @@ app.get("/shifts", authenticateToken, async (req, res) => {
   }
 });
 
-// KORREKTUR 2: /shift-types-Route angepasst
 app.get("/shift-types", authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, type_name, type_color FROM shift_types ORDER BY id');
+    const result = await pool.query('SELECT id, type_name, type_color, type_time_start, type_time_end FROM shift_types ORDER BY id');
 
-    // Stelle sicher, dass die Farbe immer ein Hex-String ist
     const typesWithHexColor = result.rows.map(type => ({
         ...type,
         type_color: toHexColor(type.type_color)
@@ -152,12 +145,10 @@ app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Invalid color format. Use #RRGGBB." });
     }
 
-    // --- NEU: Konvertiere den Hex-String (z.B. '#FF0000') in eine Zahl ---
     const colorAsInteger = parseInt(color.substring(1), 16);
 
     const result = await pool.query(
       'UPDATE shift_types SET type_color = $1 WHERE id = $2 RETURNING *',
-      // Wir übergeben jetzt die konvertierte Zahl an die Datenbank
       [colorAsInteger, id]
     );
 
@@ -165,7 +156,6 @@ app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
       return res.status(404).json({ error: "Shift type not found" });
     }
 
-    // Stelle sicher, dass die zurückgegebene Farbe wieder ein Hex-String ist
     const updatedType = {
         ...result.rows[0],
         type_color: toHexColor(result.rows[0].type_color)

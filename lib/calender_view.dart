@@ -7,10 +7,11 @@ import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/day_cell.dart';
-import 'package:shift_schedule/utils/load_shifts.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:shift_schedule/ui/widgets/day_detail_popup.dart';
 import 'package:shift_schedule/ui/widgets/day_timeline.dart';
+import 'package:shift_schedule/utils/get_color_contrast.dart';
+
 
 class CalendarView extends StatefulWidget {
   const CalendarView({super.key});
@@ -36,13 +37,14 @@ class _CalendarViewState extends State<CalendarView> {
   bool _isNextEnabled = true;
   bool _isPrevEnabled = true;
   bool _isAdmin = false;
-  Map<String, Color> _shiftColors = {}; // NEU: Map für Farben
+  Map<String, Color> _shiftColors = {};
+  Map<String, Color> _shiftTextColors = {};
 
   @override
   void initState() {
     super.initState();
     _updateNavigationButtons();
-    _loadAllData(); // NEU: Kombinierte Ladefunktion
+    _loadAllData();
     _checkAdminStatus();
   }
 
@@ -51,16 +53,22 @@ class _CalendarViewState extends State<CalendarView> {
     try {
       final types = await apiService.getShiftTypes();
       final Map<String, Color> colorMap = {};
+      final Map<String, Color> textColorMap = {};
       for (var type in types) {
         final colorString = type['type_color'] as String?;
         if (colorString != null && colorString.startsWith('#') && colorString.length == 7) {
           final colorValue = int.parse(colorString.substring(1), radix: 16) + 0xFF000000;
-          colorMap[type['type_name']] = Color(colorValue);
+          final backgroundColor = Color(colorValue);
+          final typeName = type['type_name'] as String;
+
+          colorMap[typeName] = backgroundColor;
+          textColorMap[typeName] = getColorContrast(backgroundColor);
         }
       }
       if (mounted) {
         setState(() {
           _shiftColors = colorMap;
+          _shiftTextColors = textColorMap;
         });
       }
     } catch (e) {
@@ -98,8 +106,7 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
-  // --- AKTUALISIERTE METHODE ---
-  Future<void> _loadAllData() async {
+   Future<void> _loadAllData() async {
     if(mounted) {
       setState(() {
         _isLoading = true;
@@ -107,7 +114,6 @@ class _CalendarViewState extends State<CalendarView> {
     }
 
     try {
-      // Lade Schichten und Farben parallel
       await Future.wait([
         _loadShifts(),
         _loadShiftColors(),
@@ -154,13 +160,13 @@ class _CalendarViewState extends State<CalendarView> {
     if (raw != null) {
       final parts = raw.split(RegExp(r'[,\;]')).map((s) => s.trim());
       for (final p in parts) {
-        final m = RegExp(r'(\d{1,2})(?::\d{2})?-(\d{1,2})(?::\d{2})?').firstMatch(p);
+        final m = RegExp(r'(\\d{1,2})(?::\\d{2})?-(\\d{1,2})(?::\\d{2})?').firstMatch(p);
         if (m != null) {
           final sh = int.parse(m.group(1)!);
           final eh = int.parse(m.group(2)!);
-          parsed.add(ShiftEntry(startHour: sh, endHour: eh, label: p, color: _shiftColors[p] ?? Colors.blueAccent));
+          parsed.add(ShiftEntry(startHour: sh, endHour: eh, label: p, color: _shiftColors[p] ?? Colors.blueAccent, textColor: _shiftTextColors[p]));
         } else {
-          parsed.add(ShiftEntry(startHour: 0, endHour: 24, label: p, color: _shiftColors[p] ?? Colors.grey));
+          parsed.add(ShiftEntry(startHour: 0, endHour: 24, label: p, color: _shiftColors[p] ?? Colors.grey, textColor: _shiftTextColors[p]));
         }
       }
     }
@@ -225,8 +231,9 @@ class _CalendarViewState extends State<CalendarView> {
                       final shiftType = _shifts[DateTime(day.year, day.month, day.day)];
                       return DayCell(
                         day: day,
-                        shiftColor: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
+                        shiftColor: _shiftColors[shiftType],
                         shift: shiftType,
+                        textColor: _shiftTextColors[shiftType],
                       );
                     },
                     todayBuilder: (context, day, focusedDay) {
@@ -234,7 +241,8 @@ class _CalendarViewState extends State<CalendarView> {
                       return DayCell(
                         day: day,
                         shift: shiftType,
-                        shiftColor: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
+                        shiftColor: _shiftColors[shiftType],
+                        textColor: _shiftTextColors[shiftType],
                       );
                     },
                     selectedBuilder: (context, day, focusedDay) {
@@ -242,7 +250,8 @@ class _CalendarViewState extends State<CalendarView> {
                       return DayCell(
                         day: day,
                         shift: shiftType,
-                        shiftColor: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
+                        shiftColor: _shiftColors[shiftType],
+                        textColor: _shiftTextColors[shiftType],
                       );
                     },
                   ),
@@ -261,7 +270,6 @@ class _CalendarViewState extends State<CalendarView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // --- Block für Admin-Buttons ---
                   Visibility(
                       visible: _isAdmin,
                       child: Column(
@@ -279,8 +287,7 @@ class _CalendarViewState extends State<CalendarView> {
                         ],
                       )
                   ),
-                  // --- Ende Admin-Buttons ---
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   Visibility(
                     visible: !isCurrentMonth,
                     child: FloatingActionButton(
@@ -292,8 +299,8 @@ class _CalendarViewState extends State<CalendarView> {
                         });
                       },
                       tooltip: 'Zum aktuellen Monat springen',
-                      backgroundColor: CHRONOSTheme.primary,
-                      child: const Icon(Symbols.today_rounded, color: CHRONOSTheme.onPrimary),
+                      backgroundColor: CHRONOSTheme.secondary,
+                      child: const Icon(Symbols.today_rounded, color: CHRONOSTheme.onSecondary),
                     ),
                   ),
                 ],

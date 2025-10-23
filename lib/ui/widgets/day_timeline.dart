@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shift_schedule/ui/themes/theme.dart';
 
 
 class ShiftEntry {
@@ -6,12 +7,14 @@ class ShiftEntry {
   final int endHour; // 1-24
   final String label;
   final Color color;
+  final Color? textColor;
 
   ShiftEntry({
     required this.startHour,
     required this.endHour,
     required this.label,
     this.color = Colors.blueAccent,
+    this.textColor = Colors.white,
   });
 }
 
@@ -37,7 +40,7 @@ class DayTimeline extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       border: Border(
-                        bottom: BorderSide(color: Colors.grey.withOpacity(0.12)),
+                        bottom: BorderSide(color: CHRONOSTheme.borderColorDefault(context)),
                       ),
                     ),
                     child: Row(
@@ -46,7 +49,7 @@ class DayTimeline extends StatelessWidget {
                           width: 48,
                           child: Text(
                             '${idx.toString().padLeft(2, '0')}:00',
-                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                            style: const TextStyle(fontSize: 12),
                           ),
                         ),
                         const Expanded(child: SizedBox()),
@@ -73,7 +76,7 @@ class DayTimeline extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: Text(s.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                        child: Text(s.label, style: TextStyle(color: s.textColor, fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ),

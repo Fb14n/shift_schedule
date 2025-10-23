@@ -32,10 +32,12 @@ class DayCell extends StatelessWidget {
   final Color? borderColor;
   final Color? textColor;
 
-  getTodayColor() {
+  isToday() {
     final now = DateTime.now();
     if (now.year == day.year && now.month == day.month && now.day == day.day) {
-      return shiftColor;
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -58,12 +60,14 @@ class DayCell extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: getTodayColor(),
+                color: isToday() ?? true ? shiftColor : Colors.transparent,
                 shape: BoxShape.circle,
               ),
               child: Text(
                 '${day.day}',
-                style: TextStyle(color: textColor),
+                style: TextStyle(
+                  color: isToday() ?? true ? textColor : null,
+                ),
               ),
             ),
           ),
