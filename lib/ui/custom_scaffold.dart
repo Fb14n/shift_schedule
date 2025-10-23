@@ -29,7 +29,7 @@ class CustomScaffold extends StatelessWidget {
           themeMode: themeMode,
           home: Scaffold(
             appBar: AppBar(
-              title: title ?? const Text('FEZ Schichtplan'),
+              title: title ?? Image.asset('assets/logo/logo_vertical.png', height: 40),
               leading: Builder(
                 builder: (context) => IconButton(
                   icon: const Icon(Symbols.person),
