@@ -16,4 +16,4 @@ ENV PGADMIN_LISTEN_ADDRESS=0.0.0.0
 ENV PGADMIN_LISTEN_PORT=80
 
 EXPOSE 80
-CMD ["python3", "-m", "pgadmin4"]
+CMD ["pgadmin4"]
