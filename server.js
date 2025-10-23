@@ -85,18 +85,35 @@ function authenticateToken(req, res, next) {
     });
   }
 
+// --- HILFSFUNKTION ---
+// Konvertiert eine Zahl in einen #RRGGBB Hex-String
+function toHexColor(colorValue) {
+    if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
+        return colorValue; // Ist bereits ein Hex-String
+    }
+    // Konvertiert Integer zu Hex und füllt mit Nullen auf 6 Stellen auf
+    const hex = Number(colorValue).toString(16).padStart(6, '0');
+    return `#${hex.toUpperCase()}`;
+}
+
 // ---- Routes ----
+
+// KORREKTUR 1: /shifts-Route angepasst
 app.get("/shifts", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-
-    // Das JOIN wurde angepasst, um auch die Farbe abzurufen.
     const result = await pool.query(
         'SELECT s.id, s.shift_date, st.type_name, st.type_color FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
         [userId]
     );
 
-    res.json(result.rows);
+    // Stelle sicher, dass die Farbe immer ein Hex-String ist
+    const shiftsWithHexColor = result.rows.map(shift => ({
+        ...shift,
+        type_color: toHexColor(shift.type_color)
+    }));
+
+    res.json(shiftsWithHexColor);
 
   } catch (err) {
     console.error("Shifts error:", err.stack);
@@ -104,10 +121,18 @@ app.get("/shifts", authenticateToken, async (req, res) => {
   }
 });
 
+// KORREKTUR 2: /shift-types-Route angepasst
 app.get("/shift-types", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, type_name, type_color FROM shift_types ORDER BY id');
-    res.json(result.rows);
+
+    // Stelle sicher, dass die Farbe immer ein Hex-String ist
+    const typesWithHexColor = result.rows.map(type => ({
+        ...type,
+        type_color: toHexColor(type.type_color)
+    }));
+
+    res.json(typesWithHexColor);
   } catch (err) {
     console.error("Error fetching shift types:", err.stack);
     res.status(500).json({ error: "Internal server error" });
@@ -123,11 +148,12 @@ app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Color is required" });
     }
 
-    // Regulärer Ausdruck, um zu prüfen, ob der Wert ein gültiger Hex-Farbcode ist (z.B. #RRGGBB).
     if (!/^#[0-9A-F]{6}$/i.test(color)) {
       return res.status(400).json({ error: "Invalid color format. Use #RRGGBB." });
     }
 
+    // HINWEIS: Wir speichern es jetzt als String. Zukünftige DB-Änderungen sollten
+    // die Spalte 'type_color' als VARCHAR(7) oder TEXT definieren.
     const result = await pool.query(
       'UPDATE shift_types SET type_color = $1 WHERE id = $2 RETURNING *',
       [color, id]
@@ -137,12 +163,19 @@ app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
       return res.status(404).json({ error: "Shift type not found" });
     }
 
-    res.json(result.rows[0]);
+    // Stelle sicher, dass die zurückgegebene Farbe auch ein Hex-String ist
+    const updatedType = {
+        ...result.rows[0],
+        type_color: toHexColor(result.rows[0].type_color)
+    };
+
+    res.json(updatedType);
   } catch (err) {
     console.error("Error updating shift type color:", err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
