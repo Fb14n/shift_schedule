@@ -110,6 +110,11 @@ class _SettingsViewState extends State<SettingsView> {
 
   Future<void> _updateColor(int id, Color newColor) async {
     final hexColor = _colorToHex(newColor);
+
+    // --- KORREKTUR: Speichere den BuildContext, BEVOR der Dialog geschlossen wird ---
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final theme = Theme.of(context);
+
     try {
       await _apiService.updateShiftTypeColor(id, hexColor);
 
@@ -121,7 +126,8 @@ class _SettingsViewState extends State<SettingsView> {
         }
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      // Zeige die Erfolgsmeldung mit dem gespeicherten Context
+      scaffoldMessenger.showSnackBar(
         const SnackBar(
           content: Text('Farbe erfolgreich aktualisiert!'),
           backgroundColor: Colors.green,
@@ -129,10 +135,12 @@ class _SettingsViewState extends State<SettingsView> {
       );
     } catch (e) {
       log('Fehler beim Aktualisieren der Farbe: $e', name: 'SettingsPage');
-      ScaffoldMessenger.of(context).showSnackBar(
+
+      // Zeige die Fehlermeldung mit dem gespeicherten Context
+      scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('Fehler: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          content: Text('Fehler beim Aktualisieren: ${e.toString()}'),
+          backgroundColor: theme.colorScheme.error,
         ),
       );
     }
@@ -192,7 +200,7 @@ class _SettingsViewState extends State<SettingsView> {
   Widget build(BuildContext context) {
     return CustomScaffold(
       // KORREKTUR 4: 'title' durch 'appBarTitle' ersetzt
-      title: Text('Farbeinstellungen'),
+      title: Text('Einstellungen'),
       body: _buildBody(),
     );
   }

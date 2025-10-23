@@ -225,7 +225,7 @@ class _CalendarViewState extends State<CalendarView> {
                       final shiftType = _shifts[DateTime(day.year, day.month, day.day)];
                       return DayCell(
                         day: day,
-                        highlight: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
+                        shiftColor: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
                         shift: shiftType,
                       );
                     },
@@ -234,7 +234,7 @@ class _CalendarViewState extends State<CalendarView> {
                       return DayCell(
                         day: day,
                         shift: shiftType,
-                        highlight: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
+                        shiftColor: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
                       );
                     },
                     selectedBuilder: (context, day, focusedDay) {
@@ -242,7 +242,7 @@ class _CalendarViewState extends State<CalendarView> {
                       return DayCell(
                         day: day,
                         shift: shiftType,
-                        highlight: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
+                        shiftColor: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
                       );
                     },
                   ),
@@ -275,16 +275,6 @@ class _CalendarViewState extends State<CalendarView> {
                             tooltip: 'Feiertage bearbeiten',
                             backgroundColor: CHRONOSTheme.secondary,
                             child: const Icon(Icons.edit_calendar, color: CHRONOSTheme.onSecondary),
-                          ),
-                          const SizedBox(height: 16),
-                          FloatingActionButton(
-                            heroTag: 'settingsButton', // Wichtig: Eindeutiger heroTag
-                            onPressed: () {
-                              context.pushNamed('settings');
-                            },
-                            tooltip: 'Einstellungen',
-                            backgroundColor: CHRONOSTheme.secondary,
-                            child: const Icon(Icons.settings, color: CHRONOSTheme.onSecondary),
                           ),
                         ],
                       )

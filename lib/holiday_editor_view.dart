@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shift_schedule/ui/custom_scaffold.dart';
 
 class HolidayEditorView extends StatefulWidget {
   const HolidayEditorView({super.key});
@@ -33,10 +34,8 @@ class _HolidayEditorViewState extends State<HolidayEditorView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Holiday Editor'),
-      ),
+    return CustomScaffold(
+      title: Text('Holiday Editor'),
       body: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SingleChildScrollView(

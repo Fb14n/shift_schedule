@@ -20,6 +20,11 @@ class CustomScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ApiService apiService = ApiService();
+
+    // --- NEU: Aktuelle Route und Navigations-Status ermitteln ---
+    final String? currentRoute = GoRouterState.of(context).name;
+    final bool canPop = context.canPop();
+
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: ThemeManager.themeModeNotifier,
       builder: (context, themeMode, child) {
@@ -31,7 +36,13 @@ class CustomScaffold extends StatelessWidget {
             appBar: AppBar(
               centerTitle: true,
               title: title ?? Image.asset('assets/logo/logo_vertical.png', height: 40),
-              leading: Builder(
+              // --- NEU: Logik für den Leading-Button (Person vs. Zurück-Pfeil) ---
+              leading: canPop
+                  ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.pop(),
+              )
+                  : Builder(
                 builder: (context) => IconButton(
                   icon: const Icon(Symbols.person),
                   onPressed: () {
@@ -48,6 +59,12 @@ class CustomScaffold extends StatelessWidget {
                   ),
                   onPressed: ThemeManager.toggleTheme,
                 ),
+                // --- NEU: "Settings"-Button nur anzeigen, wenn nicht auf der Settings-Seite ---
+                if (currentRoute != 'settings')
+                  IconButton(
+                    icon: const Icon(Symbols.settings_rounded),
+                    onPressed: () => context.pushNamed('settings'),
+                  ),
               ],
             ),
             drawer: FutureBuilder<Map<String, dynamic>>(
