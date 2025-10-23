@@ -1,6 +1,5 @@
 # Miscellaneous
 *.class
-*.lock
 *.log
 *.pyc
 *.swp
@@ -118,18 +117,9 @@ app.*.symbols
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
 
+.idea/
 .idea/workspace.xml
-
 .DS_Store
-
-assets/tables
-.idea
-android
-ios
-web
-*.iml
-linux
-macos
-windows
 .metadata
 node_modules
+assets/tables
