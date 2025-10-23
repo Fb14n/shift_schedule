@@ -61,7 +61,8 @@ class DayCell extends StatelessWidget {
     }
   }
   getTodayColor() {
-    if (DateTime.now().day == day.day) {
+    final now = DateTime.now();
+    if (now.year == day.year && now.month == day.month && now.day == day.day) {
       log("Today: ${day.day}, Shift: ${shift}, Colors: ${getColors()}");
       return getColors()['background']!;
     }

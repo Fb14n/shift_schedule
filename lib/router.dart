@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shift_schedule/calender_view.dart';
 import 'package:shift_schedule/holiday_editor_view.dart';
+import 'package:shift_schedule/settings_view.dart';
 
 import 'login_page.dart';
 
@@ -34,6 +35,13 @@ final GoRouter goRouter = GoRouter(
       name: 'holidayEditor',
       pageBuilder: (context, state) {
         return MaterialPage(child: HolidayEditorView());
+      },
+    ),
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      pageBuilder: (context, state) {
+        return MaterialPage(child: SettingsView());
       },
     ),
   ],

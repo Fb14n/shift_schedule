@@ -9,6 +9,8 @@ import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/day_cell.dart';
 import 'package:shift_schedule/utils/load_shifts.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:shift_schedule/ui/widgets/day_detail_popup.dart';
+import 'package:shift_schedule/ui/widgets/day_timeline.dart';
 
 class CalendarView extends StatefulWidget {
   const CalendarView({super.key});
@@ -34,14 +36,38 @@ class _CalendarViewState extends State<CalendarView> {
   bool _isNextEnabled = true;
   bool _isPrevEnabled = true;
   bool _isAdmin = false;
+  Map<String, Color> _shiftColors = {}; // NEU: Map für Farben
 
   @override
   void initState() {
     super.initState();
     _updateNavigationButtons();
-    _loadShifts();
+    _loadAllData(); // NEU: Kombinierte Ladefunktion
     _checkAdminStatus();
   }
+
+  // --- NEUE METHODE zum Laden der Farben ---
+  Future<void> _loadShiftColors() async {
+    try {
+      final types = await apiService.getShiftTypes();
+      final Map<String, Color> colorMap = {};
+      for (var type in types) {
+        final colorString = type['type_color'] as String?;
+        if (colorString != null && colorString.startsWith('#') && colorString.length == 7) {
+          final colorValue = int.parse(colorString.substring(1), radix: 16) + 0xFF000000;
+          colorMap[type['type_name']] = Color(colorValue);
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _shiftColors = colorMap;
+        });
+      }
+    } catch (e) {
+      log('Error loading shift colors: $e', name: 'CalendarView');
+    }
+  }
+  // --- ENDE NEUE METHODE ---
 
   Future<void> _checkAdminStatus() async {
     try {
@@ -49,9 +75,11 @@ class _CalendarViewState extends State<CalendarView> {
       final userDetails = await apiService.fetchUserDetails();
       log('User details: $userDetails', name: 'CalendarView');
       if (userDetails['first_name'] == 'Bob') {
-        setState(() {
-          _isAdmin = true;
-        });
+        if(mounted) {
+          setState(() {
+            _isAdmin = true;
+          });
+        }
       }
     } catch (e) {
       log('Error checking admin status: $e', name: 'CalendarView');
@@ -62,46 +90,97 @@ class _CalendarViewState extends State<CalendarView> {
     final focusedMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final firstMonth = DateTime(_firstDay.year, _firstDay.month, 1);
     final lastMonth = DateTime(_lastDay.year, _lastDay.month, 1);
-    setState(() {
-      _isPrevEnabled = focusedMonth.isAfter(firstMonth);
-      _isNextEnabled = focusedMonth.isBefore(lastMonth);
-    });
+    if(mounted) {
+      setState(() {
+        _isPrevEnabled = focusedMonth.isAfter(firstMonth);
+        _isNextEnabled = focusedMonth.isBefore(lastMonth);
+      });
+    }
   }
 
-  Future<void> _loadShifts() async {
-    setState(() {
-      _isLoading = true;
-    });
+  // --- AKTUALISIERTE METHODE ---
+  Future<void> _loadAllData() async {
+    if(mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
-      final apiService = ApiService();
-      final token = await apiService.getToken(); // Secure Storage
-      if (token == null) {
-        log('No token found, user not logged in', name: 'CalendarView');
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final shifts = await loadShifts(token);
-      if (!mounted) return;
-
-      setState(() {
-        _shifts = shifts;
-        _isLoading = false;
-        log('Shifts successfully loaded.', name: 'CalendarView');
-      });
-    } catch (e, stack) {
-      log('Error loading shifts: $e', name: 'CalendarView');
-      log('$stack', name: 'CalendarView');
-
+      // Lade Schichten und Farben parallel
+      await Future.wait([
+        _loadShifts(),
+        _loadShiftColors(),
+      ]);
+    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
     }
+  }
+
+  Future<void> _loadShifts() async {
+    try {
+      final token = await apiService.getToken();
+      if (token == null) {
+        log('No token found', name: 'CalendarView');
+        return;
+      }
+      final shiftsData = await apiService.fetchShifts(token); // Annahme: api_service hat fetchShifts
+      if (!mounted) return;
+
+      final Map<DateTime, String> shiftsMap = {};
+      for (var shift in shiftsData) {
+        final date = DateTime.parse(shift['shift_date']);
+        final dayOnly = DateTime(date.year, date.month, date.day);
+        shiftsMap[dayOnly] = shift['type_name'];
+      }
+
+      setState(() {
+        _shifts = shiftsMap;
+        log('Shifts successfully loaded.', name: 'CalendarView');
+      });
+    } catch (e, stack) {
+      log('Error loading shifts: $e', name: 'CalendarView');
+      log('$stack', name: 'CalendarView');
+    }
+  }
+
+  void _showDayPopup(DateTime selectedDay) {
+    List<ShiftEntry> parsed = [];
+    final raw = _shifts[DateTime(selectedDay.year, selectedDay.month, selectedDay.day)];
+    if (raw != null) {
+      final parts = raw.split(RegExp(r'[,\;]')).map((s) => s.trim());
+      for (final p in parts) {
+        final m = RegExp(r'(\d{1,2})(?::\d{2})?-(\d{1,2})(?::\d{2})?').firstMatch(p);
+        if (m != null) {
+          final sh = int.parse(m.group(1)!);
+          final eh = int.parse(m.group(2)!);
+          parsed.add(ShiftEntry(startHour: sh, endHour: eh, label: p, color: _shiftColors[p] ?? Colors.blueAccent));
+        } else {
+          parsed.add(ShiftEntry(startHour: 0, endHour: 24, label: p, color: _shiftColors[p] ?? Colors.grey));
+        }
+      }
+    }
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Tag schließen',
+      transitionDuration: const Duration(milliseconds: 280),
+      pageBuilder: (context, anim1, anim2) {
+        return DayDetailPopup(day: selectedDay, shifts: parsed);
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = Curves.easeOut.transform(animation.value);
+        return Transform.scale(
+          scale: 0.92 + 0.08 * curved,
+          child: Opacity(opacity: animation.value, child: child),
+        );
+      },
+    );
   }
 
   @override
@@ -133,6 +212,7 @@ class _CalendarViewState extends State<CalendarView> {
                       _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
                       _focusedDay = focusedDay;
                     });
+                    _showDayPopup(selectedDay);
                   },
                   onPageChanged: (focusedDay) {
                     setState(() {
@@ -142,28 +222,27 @@ class _CalendarViewState extends State<CalendarView> {
                   },
                   calendarBuilders: CalendarBuilders(
                     defaultBuilder: (context, day, focusedDay) {
+                      final shiftType = _shifts[DateTime(day.year, day.month, day.day)];
                       return DayCell(
                         day: day,
-                        highlight: DayCellColors().defaultColor,
-                        shift: _shifts[DateTime(day.year, day.month, day.day)],
+                        highlight: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
+                        shift: shiftType,
                       );
                     },
                     todayBuilder: (context, day, focusedDay) {
+                      final shiftType = _shifts[DateTime(day.year, day.month, day.day)];
                       return DayCell(
                         day: day,
-                        shift: _shifts[DateTime(day.year, day.month, day.day)],
-                        highlight: DayCellColors().defaultColor,
-                        //highlight: Colors.purple,
-                        //textColor: Colors.white,
+                        shift: shiftType,
+                        highlight: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
                       );
                     },
                     selectedBuilder: (context, day, focusedDay) {
+                      final shiftType = _shifts[DateTime(day.year, day.month, day.day)];
                       return DayCell(
                         day: day,
-                        shift: _shifts[DateTime(day.year, day.month, day.day)],
-                        highlight: DayCellColors().defaultColor,
-                        //highlight: Colors.yellow,
-                        //textColor: Colors.black,
+                        shift: shiftType,
+                        highlight: _shiftColors[shiftType] ?? DayCellColors().defaultColor,
                       );
                     },
                   ),
@@ -174,14 +253,6 @@ class _CalendarViewState extends State<CalendarView> {
                     titleCentered: true,
                   ),
                 ),
-                if (_selectedDay != null)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Schicht: ${_selectedDay!.day}.${_selectedDay!.month}.${_selectedDay!.year} - ${_shifts[_selectedDay] ?? 'Keine Schicht'}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
               ],
             ),
             Positioned(
@@ -190,22 +261,40 @@ class _CalendarViewState extends State<CalendarView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // --- Block für Admin-Buttons ---
                   Visibility(
-                    visible: _isAdmin,
-                    child: FloatingActionButton(
-                      onPressed: () {
-                        // Navigate to edit page or perform edit action
-                        context.pushNamed('holidayEditor');
-                      },
-                      tooltip: 'Edit',
-                      backgroundColor: CHRONOSTheme.secondary,
-                      child: const Icon(Icons.edit, color: CHRONOSTheme.onSecondary),
-                    ),
+                      visible: _isAdmin,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FloatingActionButton(
+                            heroTag: 'editButton',
+                            onPressed: () {
+                              context.pushNamed('holidayEditor');
+                            },
+                            tooltip: 'Feiertage bearbeiten',
+                            backgroundColor: CHRONOSTheme.secondary,
+                            child: const Icon(Icons.edit_calendar, color: CHRONOSTheme.onSecondary),
+                          ),
+                          const SizedBox(height: 16),
+                          FloatingActionButton(
+                            heroTag: 'settingsButton', // Wichtig: Eindeutiger heroTag
+                            onPressed: () {
+                              context.pushNamed('settings');
+                            },
+                            tooltip: 'Einstellungen',
+                            backgroundColor: CHRONOSTheme.secondary,
+                            child: const Icon(Icons.settings, color: CHRONOSTheme.onSecondary),
+                          ),
+                        ],
+                      )
                   ),
-                  const SizedBox(height: 8),
+                  // --- Ende Admin-Buttons ---
+                  const SizedBox(height: 16),
                   Visibility(
                     visible: !isCurrentMonth,
                     child: FloatingActionButton(
+                      heroTag: 'todayButton',
                       onPressed: () {
                         setState(() {
                           _focusedDay = DateTime.now();

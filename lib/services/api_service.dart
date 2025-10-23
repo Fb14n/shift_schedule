@@ -23,6 +23,50 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getShiftTypes() async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/shift-types'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      log('Fehler beim Abrufen der Schichttypen: ${response.statusCode} ${response.body}', name: 'ApiService');
+      throw Exception('Fehler beim Laden der Schichttypen');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateShiftTypeColor(int id, String newColor) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    // Sicherstellen, dass die Farbe im richtigen Format (#RRGGBB) ist
+    if (!newColor.startsWith('#') || newColor.length != 7) {
+      throw Exception('Ungültiges Farbformat. Benutze #RRGGBB.');
+    }
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/shift-types/$id/color'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'color': newColor}),
+    );
+
+    if (response.statusCode == 200) {
+      // Gibt den aktualisierten Schichttyp zurück
+      return jsonDecode(response.body);
+    } else {
+      log('Fehler beim Aktualisieren der Schichtfarbe: ${response.statusCode} ${response.body}', name: 'ApiService');
+      throw Exception('Fehler beim Aktualisieren der Schichtfarbe');
+    }
+  }
+
   Future<Map<String, dynamic>> fetchUserDetails() async {
     final token = await getToken();
     if (token == null) throw Exception('No token stored');

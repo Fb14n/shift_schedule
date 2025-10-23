@@ -86,19 +86,13 @@ function authenticateToken(req, res, next) {
   }
 
 // ---- Routes ----
-app.get("/shifts", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader) return res.status(401).json({ error: "Missing token" });
-
-  const token = authHeader.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Missing token" });
-
+app.get("/shifts", authenticateToken, async (req, res) => {
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const userId = payload.userId;
+    const userId = req.user.userId;
 
+    // Das JOIN wurde angepasst, um auch die Farbe abzurufen.
     const result = await pool.query(
-        'SELECT s.shift_date, st.type_name FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
+        'SELECT s.id, s.shift_date, st.type_name, st.type_color FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
         [userId]
     );
 
@@ -106,6 +100,46 @@ app.get("/shifts", async (req, res) => {
 
   } catch (err) {
     console.error("Shifts error:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/shift-types", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, type_name, type_color FROM shift_types ORDER BY id');
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching shift types:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { color } = req.body;
+
+    if (!color) {
+      return res.status(400).json({ error: "Color is required" });
+    }
+
+    // Regulärer Ausdruck, um zu prüfen, ob der Wert ein gültiger Hex-Farbcode ist (z.B. #RRGGBB).
+    if (!/^#[0-9A-F]{6}$/i.test(color)) {
+      return res.status(400).json({ error: "Invalid color format. Use #RRGGBB." });
+    }
+
+    const result = await pool.query(
+      'UPDATE shift_types SET type_color = $1 WHERE id = $2 RETURNING *',
+      [color, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Shift type not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error updating shift type color:", err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 });
