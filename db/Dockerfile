@@ -1,11 +1,14 @@
 FROM postgres:16-alpine
 
-# Optional: eigene Config oder Init-Skripte
-#COPY init.sql /docker-entrypoint-initdb.d/
+# Mini Webserver hinzufügen
+RUN apk add --no-cache python3
 
-# Render erwartet, dass dein Container auf PORT reagiert
-# Wir setzen den Postgres-Port auf denselben Wert
-ENV PORT=5432
+# Port 5432 = Postgres, $PORT = Render-HTTP
 EXPOSE 5432
 
-CMD ["postgres"]
+ENV PORT=10000
+ENV POSTGRES_PASSWORD=devpassword
+ENV POSTGRES_DB=shift_schedule
+
+# Starte Postgres im Hintergrund, dann HTTP Server
+CMD ["sh", "-c", "postgres & python3 -m http.server $PORT"]
