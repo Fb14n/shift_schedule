@@ -952,7 +952,7 @@ INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES
 (1092, '2025-12-28', 4, 3),
 (1093, '2025-12-29', 5, 3),
 (1094, '2025-12-30', 2, 3),
-(1095, '2025-12-31', 2, 3),
+(1095, '2025-12-31', 2, 3);
 -- (...füge hier bei Bedarf die restlichen Daten für 'shifts' ein)
 
 
