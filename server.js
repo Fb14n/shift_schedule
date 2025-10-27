@@ -1,265 +1,194 @@
-import express from "express";
-import pkg from "pg";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
-import cors from "cors";
-import fs from "fs";
+-- PostgreSQL database dump - Überarbeitet für die direkte Ausführung per Skript
 
-const { Pool } = pkg;
-const app = express();
-app.use(express.json());
-app.use(cors({ origin: "*" }));
+-- Grundeinstellungen für die Sitzung
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
 
-// -------------------------
-// Database Pool
-// -------------------------
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  host: process.env.DATABASE_HOST || "postgres",
-  port: 5432,
-  user: process.env.DATABASE_USER || "myuser",
-  password: process.env.DATABASE_PASSWORD || "mypassword",
-  database: process.env.DATABASE_NAME || "mydatabase",
-});
+-- Bestehende Tabellen und Sequenzen sicher löschen, um Konflikte zu vermeiden
+DROP TABLE IF EXISTS public.shifts CASCADE;
+DROP TABLE IF EXISTS public.shift_types CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+DROP SEQUENCE IF EXISTS public.shifts_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.shift_types_id_seq CASCADE;
+DROP SEQUENCE IF EXISTS public.users_id_seq CASCADE;
 
-// DB-Connection Check
-pool.connect()
-  .then(client => {
-    console.log("✅ DB connection ok");
-    client.release();
-  })
-  .catch(err => console.error("❌ DB connection failed:", err.stack));
 
-// -------------------------
-// JWT Secret
-// -------------------------
-const JWT_SECRET = process.env.JWT_SECRET || "secret123";
+--
+-- Tabelle: users
+--
+CREATE TABLE public.users (
+    id integer NOT NULL,
+    first_name character varying(100) NOT NULL,
+    last_name character varying(100) NOT NULL,
+    password character varying(255),
+    employee_id integer NOT NULL
+);
 
-// Seed-SQL-Datei lesen
-//const seedFile = './assets/db/seed.sql';
-const path = require('path'); // oder import path from 'path' bei ES Modules
+CREATE SEQUENCE public.users_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
-const seedFile = path.join(process.cwd(), 'assets', 'db', 'seed.sql');
-fs.readFile(seedFile, 'utf8', async (err, data) => {
-    ...
-});
-fs.readFile(seedFile, 'utf8', async (err, data) => {
-  if (err) {
-    console.error('Fehler beim Lesen der seed.sql:', err);
-    return;
-  }
-  try {
-    await pool.query(data);
-    console.log('✅ Seed erfolgreich ausgeführt');
-  } catch (err) {
-    console.error('❌ Fehler beim Ausführen der seed.sql:', err.stack);
-  }
-});
+--
+-- Tabelle: shift_types
+-- (Ergänzt um Spalten, die in der API verwendet werden)
+--
+CREATE TABLE public.shift_types (
+    id integer NOT NULL,
+    type_name character varying(50) NOT NULL,
+    type_color BIGINT DEFAULT 16777215, -- Standardfarbe: Weiß
+    type_time_start TIME,
+    type_time_end TIME
+);
 
-// ---- DB Init ----
-async function initDB() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      name TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
-    );
-  `);
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS shifts (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id),
-      shift_date DATE NOT NULL,
-      shift_type TEXT NOT NULL,
-      name TEXT NOT NULL
-    );
-  `);
-}
-initDB().catch(console.error);
+CREATE SEQUENCE public.shift_types_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.shift_types_id_seq OWNED BY public.shift_types.id;
+ALTER TABLE ONLY public.shift_types ALTER COLUMN id SET DEFAULT nextval('public.shift_types_id_seq'::regclass);
 
-// ---- Middleware ----
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  if (!token) return res.sendStatus(401);
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-      if (err) return res.sendStatus(403);
-      req.user = user;
-      next();
-    });
-  }
+--
+-- Tabelle: shifts
+--
+CREATE TABLE public.shifts (
+    id integer NOT NULL,
+    shift_date date NOT NULL,
+    shift_type_id integer NOT NULL,
+    user_id integer NOT NULL
+);
 
-// --- HILFSFUNKTION ---
-function toHexColor(colorValue) {
-    if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
-        return colorValue; // Ist bereits ein Hex-String
-    }
-    const hex = Number(colorValue).toString(16).padStart(6, '0');
-    return `#${hex.toUpperCase()}`;
-}
+CREATE SEQUENCE public.shifts_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.shifts_id_seq OWNED BY public.shifts.id;
+ALTER TABLE ONLY public.shifts ALTER COLUMN id SET DEFAULT nextval('public.shifts_id_seq'::regclass);
 
-// ---- Routes ----
-app.get("/shifts", authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const result = await pool.query(
-        'SELECT s.id, s.shift_date, st.type_name, st.type_color, st.type_time_start, st.type_time_end FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
-        [userId]
-    );
 
-    const shiftsWithHexColor = result.rows.map(shift => ({
-        ...shift,
-        type_color: toHexColor(shift.type_color)
-    }));
+--
+-- Daten einfügen für: shift_types
+-- (Ersetzt den COPY-Befehl durch INSERT)
+--
+INSERT INTO public.shift_types (id, type_name) VALUES
+(1, 'Frühschicht'),
+(2, 'Spätschicht'),
+(3, 'Nachtschicht'),
+(4, 'Krank'),
+(5, 'Urlaub');
 
-    res.json(shiftsWithHexColor);
 
-  } catch (err) {
-    console.error("Shifts error:", err.stack);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+--
+-- Daten einfügen für: shifts
+-- (Ersetzt den COPY-Befehl durch INSERT)
+-- WICHTIG: Die user_id '1' und '2' müssen in der 'users'-Tabelle existieren.
+-- Füge hier bei Bedarf zuerst deine Benutzer ein.
+-- Beispiel:
+-- INSERT INTO public.users (id, first_name, last_name, employee_id, password) VALUES
+-- (1, 'Max', 'Mustermann', 101, '$2b$10$...'), -- Passwort muss gehasht sein
+-- (2, 'Erika', 'Mustermann', 102, '$2b$10$...');
 
-app.get("/shift-types", authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query('SELECT id, type_name, type_color, type_time_start, type_time_end FROM shift_types ORDER BY id');
+INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES
+(161, '2025-06-10', 5, 1),
+(162, '2025-06-11', 4, 1),
+(163, '2025-06-12', 5, 1),
+(164, '2025-06-13', 5, 1),
+(165, '2025-06-14', 2, 1),
+(166, '2025-06-15', 5, 1),
+(167, '2025-06-16', 2, 1),
+(168, '2025-06-17', 5, 1),
+(169, '2025-06-18', 4, 1),
+(170, '2025-06-19', 4, 1),
+(171, '2025-06-20', 2, 1),
+(172, '2025-06-21', 1, 1),
+(173, '2025-06-22', 1, 1),
+(174, '2025-06-23', 1, 1),
+(175, '2025-06-24', 5, 1),
+(176, '2025-06-25', 2, 1),
+(177, '2025-06-26', 4, 1),
+(178, '2025-06-27', 1, 1),
+(179, '2025-06-28', 5, 1),
+(180, '2025-06-29', 1, 1),
+(181, '2025-06-30', 2, 1),
+(182, '2025-07-01', 1, 1),
+(183, '2025-07-02', 1, 1),
+(184, '2025-07-03', 1, 1),
+(185, '2025-07-04', 5, 1),
+(186, '2025-07-05', 1, 1),
+(187, '2025-07-06', 4, 1),
+(188, '2025-07-07', 2, 1),
+(189, '2025-07-08', 5, 1),
+(190, '2025-07-09', 1, 1),
+(191, '2025-07-10', 5, 1),
+(192, '2025-07-11', 1, 1),
+(193, '2025-07-12', 5, 1),
+(194, '2025-07-13', 2, 1),
+(195, '2025-07-14', 5, 1),
+(196, '2025-07-15', 2, 1),
+(197, '2025-07-16', 1, 1),
+(198, '2025-07-17', 2, 1),
+(199, '2025-07-18', 5, 1),
+(200, '2025-07-19', 1, 1),
+(366, '2025-01-01', 5, 2),
+(367, '2025-01-02', 2, 2),
+(368, '2025-01-03', 1, 2),
+(369, '2025-01-04', 5, 2),
+(370, '2025-01-05', 2, 2),
+(371, '2025-01-06', 5, 2),
+(372, '2025-01-07', 1, 2),
+(373, '2025-01-08', 4, 2),
+(374, '2025-01-09', 5, 2),
+(375, '2025-01-10', 1, 2),
+(376, '2025-01-11', 1, 2),
+(377, '2025-01-12', 5, 2),
+(378, '2025-01-13', 4, 2),
+(379, '2025-01-14', 1, 2),
+(380, '2025-01-15', 5, 2),
+(381, '2025-01-16', 5, 2),
+(382, '2025-01-17', 2, 2),
+(383, '2025-01-18', 1, 2),
+(384, '2025-01-19', 1, 2),
+(385, '2025-01-20', 5, 2),
+(386, '2025-01-21', 5, 2),
+(387, '2025-01-22', 4, 2),
+(388, '2025-01-23', 2, 2),
+(389, '2025-01-24', 5, 2),
+(390, '2025-01-25', 5, 2),
+(391, '2025-01-26', 1, 2);
+-- (...füge hier bei Bedarf die restlichen Daten für 'shifts' ein)
 
-    const typesWithHexColor = result.rows.map(type => ({
-        ...type,
-        type_color: toHexColor(type.type_color)
-    }));
 
-    res.json(typesWithHexColor);
-  } catch (err) {
-    console.error("Error fetching shift types:", err.stack);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+--
+-- Fremdschlüssel-Beziehungen definieren
+--
+ALTER TABLE ONLY public.shifts
+    ADD CONSTRAINT shifts_shift_type_id_fkey FOREIGN KEY (shift_type_id) REFERENCES public.shift_types(id);
 
-app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { color } = req.body;
+ALTER TABLE ONLY public.shifts
+    ADD CONSTRAINT shifts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
-    if (!color) {
-      return res.status(400).json({ error: "Color is required" });
-    }
 
-    if (!/^#[0-9A-F]{6}$/i.test(color)) {
-      return res.status(400).json({ error: "Invalid color format. Use #RRGGBB." });
-    }
+--
+-- Primärschlüssel definieren
+--
+ALTER TABLE ONLY public.shift_types
+    ADD CONSTRAINT shift_types_pkey PRIMARY KEY (id);
 
-    const colorAsInteger = parseInt(color.substring(1), 16);
+ALTER TABLE ONLY public.shifts
+    ADD CONSTRAINT shifts_pkey PRIMARY KEY (id);
 
-    const result = await pool.query(
-      'UPDATE shift_types SET type_color = $1 WHERE id = $2 RETURNING *',
-      [colorAsInteger, id]
-    );
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Shift type not found" });
-    }
+-- Eindeutigkeit für employee_id sicherstellen
+ALTER TABLE public.users
+    ADD CONSTRAINT users_employee_id_key UNIQUE (employee_id);
 
-    const updatedType = {
-        ...result.rows[0],
-        type_color: toHexColor(result.rows[0].type_color)
-    };
 
-    res.json(updatedType);
-
-  } catch (err) {
-    console.error("Error updating shift type color:", err.stack);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.post("/register", async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    const hashed = await bcrypt.hash(password, 10);
-    await pool.query("INSERT INTO users (name, password) VALUES ($1, $2)", [
-      username,
-      hashed,
-    ]);
-    res.json({ msg: "User created" });
-  } catch (err) {
-    if (err.code === "23505") {
-      return res.status(400).json({ error: "User already exists" });
-    }
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.post("/login", async (req, res) => {
-  console.log("Login request body:", req.body);
-  const { username, password } = req.body;
-  try {
-    const result = await pool.query(
-      "SELECT id, first_name, last_name, employee_id, password FROM users WHERE first_name = $1",
-      [username]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: "User not found" });
-    }
-
-    const user = result.rows[0];
-    const match = await bcrypt.compare(password, user.password);
-
-    if (!match) {
-      return res.status(401).json({ error: "Invalid password" });
-    }
-
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "2h" });
-    res.json({ access_token: token, token_type: "bearer" });
-
-  } catch (err) {
-    console.error("Login error:", err.stack);
-    res.status(500).json({ error: err.message});
-  }
-});
-
-app.get("/user/details", authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-
-    const userResult = await pool.query(
-      "SELECT first_name, last_name, employee_id FROM users WHERE id = $1",
-      [userId]
-    );
-
-    const vacationResult = await pool.query(
-      "SELECT COUNT(*) AS vacation_days FROM shifts WHERE user_id = $1 AND shift_type_id = '5'",
-      [userId]
-    );
-
-    const sickResult = await pool.query(
-      "SELECT COUNT(*) AS sick_days FROM shifts WHERE user_id = $1 AND shift_type_id = '4'",
-      [userId]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    res.json({
-      first_name: userResult.rows[0].first_name,
-      last_name: userResult.rows[0].last_name,
-      employee_id: userResult.rows[0].employee_id,
-      vacation_days: parseInt(vacationResult.rows[0].vacation_days),
-      sick_days: parseInt(sickResult.rows[0].sick_days),
-    });
-  } catch (err) {
-    console.error("Error fetching user details:", err.stack);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ---- Start Server ----
-const host = process.env.HOST || '0.0.0.0';
-app.listen(3000, host, () => {
-  console.log(`🚀 Server running on :${host}:3000`);
-});
+-- Setzt die Sequenzen auf den höchsten aktuellen Wert in den Tabellen,
+-- damit neue INSERTS nach dem Seeding keine Konflikte verursachen.
+SELECT setval('public.users_id_seq', COALESCE((SELECT MAX(id) FROM public.users), 1), true);
+SELECT setval('public.shift_types_id_seq', COALESCE((SELECT MAX(id) FROM public.shift_types), 1), true);
+SELECT setval('public.shifts_id_seq', COALESCE((SELECT MAX(id) FROM public.shifts), 1), true);
