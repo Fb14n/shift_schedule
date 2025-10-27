@@ -40,14 +40,29 @@ const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 const seedFile = './assets/db/seed.sql';
 fs.readFile(seedFile, 'utf8', async (err, data) => {
   if (err) {
-    console.error('Fehler beim Lesen der seed.sql:', err);
+    console.error('❌ Fehler beim Lesen der seed.sql:', err);
     return;
   }
+
+  // SQL-Skript in einzelne Anweisungen aufteilen
+  const statements = data.split(';').filter(statement => statement.trim() !== '');
+
+  // Jede Anweisung einzeln ausführen
+  const client = await pool.connect();
   try {
-    await pool.query(data);
+    await client.query('BEGIN'); // Starte eine Transaktion
+    for (const statement of statements) {
+      if (statement.trim()) { // Stelle sicher, dass das Statement nicht leer ist
+        await client.query(statement);
+      }
+    }
+    await client.query('COMMIT'); // Bestätige die Transaktion
     console.log('✅ Seed erfolgreich ausgeführt');
   } catch (err) {
+    await client.query('ROLLBACK'); // Mache bei Fehlern alles rückgängig
     console.error('❌ Fehler beim Ausführen der seed.sql:', err.stack);
+  } finally {
+    client.release(); // Gib die Verbindung wieder frei
   }
 });
 
