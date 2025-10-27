@@ -37,7 +37,7 @@ pool.connect()
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 
 // Seed-SQL-Datei lesen
-const seedFile = '.assets/db/seed.sql';
+const seedFile = './assets/db/seed.sql';
 fs.readFile(seedFile, 'utf8', async (err, data) => {
   if (err) {
     console.error('Fehler beim Lesen der seed.sql:', err);
