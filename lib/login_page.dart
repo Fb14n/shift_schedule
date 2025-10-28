@@ -1,4 +1,3 @@
-// dart
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -57,6 +56,81 @@ class _LoginPageState extends State<LoginPage> {
         SnackBar(content: Text('$e')),
       );
     }
+  }
+
+  void _showForgotPasswordDialog() {
+    final usernameController = TextEditingController();
+    final employeeIdController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Passwort zurücksetzen'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: usernameController,
+                  decoration: const InputDecoration(labelText: 'Benutzername (Vorname)'),
+                  validator: (value) => value!.isEmpty ? 'Bitte Benutzernamen eingeben' : null,
+                ),
+                TextFormField(
+                  controller: employeeIdController,
+                  decoration: const InputDecoration(labelText: 'Personalnummer'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value!.isEmpty ? 'Bitte Personalnummer eingeben' : null,
+                ),
+                TextFormField(
+                  controller: newPasswordController,
+                  decoration: const InputDecoration(labelText: 'Neues Passwort'),
+                  obscureText: true,
+                  validator: (value) => value!.isEmpty ? 'Bitte neues Passwort eingeben' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Abbrechen'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  try {
+                    // Schließe den Dialog und zeige einen Ladeindikator an
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Setze Passwort zurück...')));
+
+                    await _apiService.resetPassword(
+                      username: usernameController.text,
+                      employeeId: employeeIdController.text,
+                      newPassword: newPasswordController.text,
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Passwort erfolgreich zurückgesetzt! Du kannst dich jetzt mit dem neuen Passwort anmelden.')),
+                    );
+
+                  } catch (e) {
+                    log('Password reset failed: $e', name: 'LoginPage');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Fehler: ${e.toString()}')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Zurücksetzen'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -120,6 +194,14 @@ class _LoginPageState extends State<LoginPage> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text('Login'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _showForgotPasswordDialog,
+                      child: const Text(
+                        'Passwort vergessen?',
+                        style: TextStyle(color: CHRONOSTheme.onPrimary),
                       ),
                     ),
                   ],

@@ -109,6 +109,31 @@ class ApiService {
     }
   }
 
+  Future<void> resetPassword({
+    required String username,
+    required String employeeId,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/reset-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': username,
+        'employeeId': employeeId,
+        'newPassword': newPassword,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      // Erfolgreich zurückgesetzt
+      return;
+    } else {
+      // Fehlerfall
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Unbekannter Fehler beim Zurücksetzen des Passworts.');
+    }
+  }
+
   Future<void> logout() async {
     try {
       await storage.deleteAll();

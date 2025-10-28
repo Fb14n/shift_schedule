@@ -230,6 +230,45 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.post("/reset-password", async (req, res) => {
+  const { username, employeeId, newPassword } = req.body;
+
+  // Validierung der Eingabe
+  if (!username || !employeeId || !newPassword) {
+    return res.status(400).json({ error: "Username, employee ID, and new password are required." });
+  }
+
+  try {
+    // Finde den Benutzer basierend auf Vorname UND Personalnummer
+    const userResult = await pool.query(
+      "SELECT id FROM users WHERE first_name = $1 AND employee_id = $2",
+      [username, employeeId]
+    );
+
+    if (userResult.rows.length === 0) {
+      // Wenn kein Benutzer gefunden wird, ist die Identifizierung fehlgeschlagen.
+      return res.status(404).json({ error: "User not found or employee ID is incorrect." });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Hashe das neue Passwort
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Aktualisiere das Passwort in der Datenbank
+    await pool.query(
+      "UPDATE users SET password = $1 WHERE id = $2",
+      [hashedNewPassword, userId]
+    );
+
+    res.json({ msg: "Password has been reset successfully." });
+
+  } catch (err) {
+    console.error("Password reset error:", err.stack);
+    res.status(500).json({ error: "Internal server error while resetting password." });
+  }
+});
+
 app.get("/user/details", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
