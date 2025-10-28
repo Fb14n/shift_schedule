@@ -37,34 +37,33 @@ pool.connect()
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 
 // Seed-SQL-Datei lesen
-const seedFile = './assets/db/seed.sql';
-fs.readFile(seedFile, 'utf8', async (err, data) => {
-  if (err) {
-    console.error('❌ Fehler beim Lesen der seed.sql:', err);
-    return;
-  }
-
-  // SQL-Skript in einzelne Anweisungen aufteilen
-  const statements = data.split(';').filter(statement => statement.trim() !== '');
-
-  // Jede Anweisung einzeln ausführen
-  const client = await pool.connect();
+async function runSeed() {
+  const seedFile = './assets/db/seed.sql';
   try {
-    await client.query('BEGIN'); // Starte eine Transaktion
-    for (const statement of statements) {
-      if (statement.trim()) { // Stelle sicher, dass das Statement nicht leer ist
-        await client.query(statement);
+    const data = await fs.promises.readFile(seedFile, 'utf8');
+    const statements = data.split(';').filter(statement => statement.trim() !== '');
+
+    const client = await pool.connect();
+    try {
+      console.log('🚀 Starting background seed...');
+      await client.query('BEGIN');
+      for (const statement of statements) {
+        if (statement.trim()) {
+          await client.query(statement);
+        }
       }
+      await client.query('COMMIT');
+      console.log('✅ Background seed successful.');
+    } catch (dbErr) {
+      await client.query('ROLLBACK');
+      console.error('❌ Error during background seed:', dbErr.stack);
+    } finally {
+      client.release();
     }
-    await client.query('COMMIT'); // Bestätige die Transaktion
-    console.log('✅ Seed erfolgreich ausgeführt');
-  } catch (err) {
-    await client.query('ROLLBACK'); // Mache bei Fehlern alles rückgängig
-    console.error('❌ Fehler beim Ausführen der seed.sql:', err.stack);
-  } finally {
-    client.release(); // Gib die Verbindung wieder frei
+  } catch (fileErr) {
+    console.error('❌ Error reading seed.sql for background process:', fileErr);
   }
-});
+}
 
 // ---- DB Init ----
 async function initDB() {
@@ -270,5 +269,6 @@ app.get("/user/details", authenticateToken, async (req, res) => {
 // ---- Start Server ----
 const host = process.env.HOST || '0.0.0.0';
 app.listen(3000, host, () => {
-  console.log(`🚀 Server running on :${host}:3000`);
+  console.log(`🚀 Server running on :${host}`);
+  runSeed();
 });

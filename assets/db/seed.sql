@@ -60,16 +60,16 @@ CREATE TABLE public.shifts (
     id integer NOT NULL PRIMARY KEY,
     shift_date date NOT NULL,
     shift_type_id integer NOT NULL,
-    user_id integer NOT NULL
+    user_id integer NOT NULL,
     -- VVV HINZUGEFÜGT: Fremdschlüssel-Definitionen VVV
-        CONSTRAINT fk_shift_type
-            FOREIGN KEY(shift_type_id)
-            REFERENCES public.shift_types(id)
-            ON DELETE CASCADE, -- Optional: Löscht Schichten, wenn der Schicht-Typ gelöscht wird
-        CONSTRAINT fk_user
-            FOREIGN KEY(user_id)
-            REFERENCES public.users(id)
-            ON DELETE CASCADE -- Optional: Löscht Schichten, wenn der Benutzer gelöscht wird
+    CONSTRAINT fk_shift_type
+        FOREIGN KEY(shift_type_id)
+        REFERENCES public.shift_types(id)
+        ON DELETE CASCADE, -- Optional: Löscht Schichten, wenn der Schicht-Typ gelöscht wird
+    CONSTRAINT fk_user
+        FOREIGN KEY(user_id)
+        REFERENCES public.users(id)
+        ON DELETE CASCADE -- Optional: Löscht Schichten, wenn der Benutzer gelöscht wird
 );
 
 CREATE SEQUENCE public.shifts_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
