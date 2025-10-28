@@ -25,7 +25,7 @@ DROP SEQUENCE IF EXISTS public.users_id_seq CASCADE;
 -- Tabelle: users
 --
 CREATE TABLE public.users (
-    id integer NOT NULL,
+    id integer NOT NULL PRIMARY KEY,
     first_name character varying(100) NOT NULL,
     last_name character varying(100) NOT NULL,
     password character varying(255),
@@ -41,7 +41,7 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 -- (Ergänzt um Spalten, die in der API verwendet werden)
 --
 CREATE TABLE public.shift_types (
-    id integer NOT NULL,
+    id integer NOT NULL PRIMARY KEY,
     type_name character varying(50) NOT NULL,
     type_color BIGINT DEFAULT 16777215, -- Standardfarbe: Weiß
     type_time_start TIME,
@@ -57,10 +57,19 @@ ALTER TABLE ONLY public.shift_types ALTER COLUMN id SET DEFAULT nextval('public.
 -- Tabelle: shifts
 --
 CREATE TABLE public.shifts (
-    id integer NOT NULL,
+    id integer NOT NULL PRIMARY KEY,
     shift_date date NOT NULL,
     shift_type_id integer NOT NULL,
     user_id integer NOT NULL
+    -- VVV HINZUGEFÜGT: Fremdschlüssel-Definitionen VVV
+        CONSTRAINT fk_shift_type
+            FOREIGN KEY(shift_type_id)
+            REFERENCES public.shift_types(id)
+            ON DELETE CASCADE, -- Optional: Löscht Schichten, wenn der Schicht-Typ gelöscht wird
+        CONSTRAINT fk_user
+            FOREIGN KEY(user_id)
+            REFERENCES public.users(id)
+            ON DELETE CASCADE -- Optional: Löscht Schichten, wenn der Benutzer gelöscht wird
 );
 
 CREATE SEQUENCE public.shifts_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
@@ -73,11 +82,11 @@ ALTER TABLE ONLY public.shifts ALTER COLUMN id SET DEFAULT nextval('public.shift
 -- (Ersetzt den COPY-Befehl durch INSERT)
 --
 INSERT INTO public.shift_types (id, type_name) VALUES
-(1, 'Frühschicht'),
-(2, 'Spätschicht'),
-(3, 'Nachtschicht'),
-(4, 'Krank'),
-(5, 'Urlaub');
+(1, 'Frühschicht', 4367989, '06:00:00', '14:00:00'),
+(2, 'Spätschicht', 16760576, '14:00:00', '22:00:00'),
+(3, 'Nachtschicht', 7304056, '22:00:00', '06:00:00'),
+(4, 'Krank', 15745618, '00:00:00', '24:00:00'),
+(5, 'Urlaub', 4242352, '00:00:00', '24:00:00');
 
 
 --
@@ -86,9 +95,10 @@ INSERT INTO public.shift_types (id, type_name) VALUES
 -- WICHTIG: Die user_id '1' und '2' müssen in der 'users'-Tabelle existieren.
 -- Füge hier bei Bedarf zuerst deine Benutzer ein.
 -- Beispiel:
--- INSERT INTO public.users (id, first_name, last_name, employee_id, password) VALUES
--- (1, 'Max', 'Mustermann', 101, '$2b$10$...'), -- Passwort muss gehasht sein
--- (2, 'Erika', 'Mustermann', 102, '$2b$10$...');
+INSERT INTO public.users (id, first_name, last_name, employee_id, password) VALUES
+(1, 'Alice', 'Muster', 1000, '$2a$10$IfTwGWhx/v6Um13v2YdG9.yWvfzWlqreLg0x./aJ0f/dC4b9W4vL.'),
+(2, 'Bob', 'Muster', 1001, '$2a$10$IfTwGWhx/v6Um13v2YdG9.yWvfzWlqreLg0x./aJ0f/dC4b9W4vL.');
+(3, 'Carsten', 'Muster', 1002, '$2a$10$IfTwGWhx/v6Um13v2YdG9.yWvfzWlqreLg0x./aJ0f/dC4b9W4vL.');
 
 INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES
 (161, '2025-06-10', 5, 1),
