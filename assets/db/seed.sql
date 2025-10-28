@@ -975,20 +975,9 @@ ALTER TABLE ONLY public.shifts
 ALTER TABLE ONLY public.shifts
     ADD CONSTRAINT shifts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
-
 --
--- Primärschlüssel definieren
---
-ALTER TABLE ONLY public.shift_types
-    ADD CONSTRAINT shift_types_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.shifts
-    ADD CONSTRAINT shifts_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
-
 -- Eindeutigkeit für employee_id sicherstellen
+--
 ALTER TABLE public.users
     ADD CONSTRAINT users_employee_id_key UNIQUE (employee_id);
 
