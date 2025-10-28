@@ -97,7 +97,7 @@ INSERT INTO public.shift_types (id, type_name) VALUES
 -- Beispiel:
 INSERT INTO public.users (id, first_name, last_name, employee_id, password) VALUES
 (1, 'Alice', 'Muster', 1000, '$2a$10$IfTwGWhx/v6Um13v2YdG9.yWvfzWlqreLg0x./aJ0f/dC4b9W4vL.'),
-(2, 'Bob', 'Muster', 1001, '$2a$10$IfTwGWhx/v6Um13v2YdG9.yWvfzWlqreLg0x./aJ0f/dC4b9W4vL.');
+(2, 'Bob', 'Muster', 1001, '$2a$10$IfTwGWhx/v6Um13v2YdG9.yWvfzWlqreLg0x./aJ0f/dC4b9W4vL.'),
 (3, 'Carsten', 'Muster', 1002, '$2a$10$IfTwGWhx/v6Um13v2YdG9.yWvfzWlqreLg0x./aJ0f/dC4b9W4vL.');
 
 INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES
