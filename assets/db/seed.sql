@@ -81,7 +81,7 @@ ALTER TABLE ONLY public.shifts ALTER COLUMN id SET DEFAULT nextval('public.shift
 -- Daten einfügen für: shift_types
 -- (Ersetzt den COPY-Befehl durch INSERT)
 --
-INSERT INTO public.shift_types (id, type_name) VALUES
+INSERT INTO public.shift_types (id, type_name, type_color, type_time_start, type_time_end) VALUES
 (1, 'Frühschicht', 4367989, '06:00:00', '14:00:00'),
 (2, 'Spätschicht', 16760576, '14:00:00', '22:00:00'),
 (3, 'Nachtschicht', 7304056, '22:00:00', '06:00:00'),
