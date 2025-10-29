@@ -99,30 +99,54 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Abbrechen'),
             ),
+// In der Datei login_page.dart, innerhalb von _showForgotPasswordDialog
+
             ElevatedButton(
               onPressed: () async {
-                if (formKey.currentState!.validate()) {
-                  try {
-                    // Schließe den Dialog und zeige einen Ladeindikator an
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Setze Passwort zurück...')));
+                // 1. Prüfen, ob das Formular valide ist. Wenn nicht, passiert nichts.
+                if (!formKey.currentState!.validate()) {
+                  return;
+                }
 
-                    await _apiService.resetPassword(
-                      username: usernameController.text,
-                      employeeId: employeeIdController.text,
-                      newPassword: newPasswordController.text,
-                    );
+                // 2. Den ScaffoldMessenger und Navigator SICHERN, BEVOR der Dialog geschlossen wird.
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Passwort erfolgreich zurückgesetzt! Du kannst dich jetzt mit dem neuen Passwort anmelden.')),
-                    );
+                // 3. Den Dialog mit dem gesicherten Navigator schließen.
+                navigator.pop();
 
-                  } catch (e) {
-                    log('Password reset failed: $e', name: 'LoginPage');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Fehler: ${e.toString()}')),
-                    );
-                  }
+                // 4. Lade-Nachricht mit dem gesicherten ScaffoldMessenger anzeigen.
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(content: Text('Setze Passwort zurück...')),
+                );
+
+                try {
+                  // 5. Die asynchrone Netzwerk-Anfrage ausführen.
+                  await _apiService.resetPassword(
+                    username: usernameController.text,
+                    employeeId: employeeIdController.text,
+                    newPassword: newPasswordController.text,
+                  );
+
+                  // 6. NACH dem await: Die Erfolgs-SnackBar anzeigen. Dies ist jetzt sicher.
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Passwort erfolgreich zurückgesetzt! Du kannst dich jetzt anmelden.'),
+                      backgroundColor: CHRONOSTheme.success,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+
+                } catch (e) {
+                  log('Password reset failed: $e', name: 'LoginPage');
+
+                  // 7. NACH dem await im Fehlerfall: Die Fehler-SnackBar anzeigen. Dies ist jetzt auch sicher.
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Fehler: ${e.toString()}'),
+                      backgroundColor: CHRONOSTheme.error,
+                    ),
+                  );
                 }
               },
               child: const Text('Zurücksetzen'),

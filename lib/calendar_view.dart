@@ -28,7 +28,6 @@ class _CalendarViewState extends State<CalendarView> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   final CalendarFormat _calendarFormat = CalendarFormat.month;
-  // --- ÄNDERUNG 1: Den Typ der _shifts-Map anpassen ---
   Map<DateTime, Map<String, dynamic>> _shifts = {};
   bool _isLoading = true;
   final ApiService apiService = ApiService();
@@ -126,7 +125,6 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
-  // --- ÄNDERUNG 2: _loadShifts anpassen, um die ganze Map zu speichern ---
   Future<void> _loadShifts() async {
     try {
       final token = await apiService.getToken();
@@ -141,7 +139,6 @@ class _CalendarViewState extends State<CalendarView> {
       for (var shift in shiftsData) {
         final date = DateTime.parse(shift['shift_date']);
         final dayOnly = DateTime(date.year, date.month, date.day);
-        // Das gesamte Schicht-Objekt speichern, nicht nur den Namen
         shiftsMap[dayOnly] = shift;
       }
 
@@ -155,15 +152,11 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
-  // --- ÄNDERUNG 3: _showDayPopup komplett überarbeiten ---
   void _showDayPopup(DateTime selectedDay) {
     final dayKey = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
-
-    // Die Schichtdaten für den Tag als Liste von Maps vorbereiten.
     final List<Map<String, dynamic>> shiftsForDay = [];
+
     if (_shifts.containsKey(dayKey)) {
-      // Füge die gefundene Schicht zur Liste hinzu.
-      // In Zukunft könnte dies erweitert werden, falls mehrere Schichten pro Tag möglich sind.
       shiftsForDay.add(_shifts[dayKey]!);
     }
 
@@ -173,8 +166,6 @@ class _CalendarViewState extends State<CalendarView> {
       barrierLabel: 'Tag schließen',
       transitionDuration: const Duration(milliseconds: 280),
       pageBuilder: (context, anim1, anim2) {
-        // Die Liste der Schicht-Maps direkt an das Popup übergeben.
-        // Das Popup kümmert sich um die Umwandlung in ShiftEntry-Objekte.
         return DayDetailPopup(day: selectedDay, shifts: shiftsForDay);
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -203,6 +194,9 @@ class _CalendarViewState extends State<CalendarView> {
             Column(
               children: [
                 TableCalendar(
+                  daysOfWeekHeight: 20,
+                  weekendDays: const [DateTime.saturday, DateTime.sunday],
+                  loadEventsForDisabledDays: true,
                   rowHeight: MediaQuery.of(context).size.height * 0.6 / 5,
                   locale: 'de_DE',
                   startingDayOfWeek: StartingDayOfWeek.monday,
@@ -225,7 +219,6 @@ class _CalendarViewState extends State<CalendarView> {
                       _updateNavigationButtons();
                     });
                   },
-                  // --- ÄNDERUNG 4: CalendarBuilders anpassen ---
                   calendarBuilders: CalendarBuilders(
                     defaultBuilder: (context, day, focusedDay) {
                       final shiftData = _shifts[DateTime(day.year, day.month, day.day)];

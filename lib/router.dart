@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shift_schedule/calender_view.dart';
+import 'package:shift_schedule/calendar_view.dart';
 import 'package:shift_schedule/holiday_editor_view.dart';
 import 'package:shift_schedule/settings_view.dart';
 
