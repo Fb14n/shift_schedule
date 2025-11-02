@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
           title: 'Shift Schedule',
           theme: CHRONOSTheme.lightTheme,
           darkTheme: CHRONOSTheme.darkTheme,
-          themeMode: themeMode, // <— wichtig!
+          themeMode: themeMode,
         );
       },
     );

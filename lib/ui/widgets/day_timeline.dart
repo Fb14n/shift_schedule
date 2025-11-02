@@ -14,7 +14,7 @@ class ShiftEntry {
     required this.endHour,
     required this.label,
     required this.color,
-    this.textColor = Colors.white,
+    this.textColor,
   });
 }
 

@@ -9,9 +9,8 @@ class CHRONOSColors extends ThemeExtension<CHRONOSColors> {
   Color operator [](String key) => _colors[key]!;
 
   Color get popUpBackground => _colors['popUpBackground']!;
-  Color get calendarAccent => _colors['calendarAccent']!;
-  Color get shiftHighlight => _colors['shiftHighlight']!;
   Color get borderColorDefault => _colors['borderColorDefault']!;
+  Color get popUpShadow => _colors['popUpShadow']!;
 
   @override
   CHRONOSColors copyWith({Map<String, Color>? colors}) =>
@@ -29,16 +28,14 @@ class CHRONOSColors extends ThemeExtension<CHRONOSColors> {
 
   // === Light & Dark Map ===
   static final light = CHRONOSColors({
-    'popUpBackground': const Color(0xFFF4F4F4),
-    'calendarAccent': const Color(0xFF305CA3),
-    'shiftHighlight': const Color(0xFF174165),
+    'popUpBackground': Colors.white,
+    'popUpShadow': Colors.white,
     'borderColorDefault': Colors.black,
   });
 
   static final dark = CHRONOSColors({
-    'popBackground': const Color(0xFF1E1E1E),
-    'calendarAccent': const Color(0xFF7299F5),
-    'shiftHighlight': const Color(0xFF4A6CA3),
+    'popUpBackground': Colors.black,
+    'popUpShadow': Colors.white,
     'borderColorDefault': Colors.white,
   });
 }

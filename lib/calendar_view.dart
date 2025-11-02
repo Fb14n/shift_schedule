@@ -226,31 +226,40 @@ class _CalendarViewState extends State<CalendarView> {
                     defaultBuilder: (context, day, focusedDay) {
                       final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
                       final shiftType = shiftData?['type_name'] as String?;
-                      return DayCell(
-                        day: day,
-                        shiftColor: _shiftColors[shiftType],
-                        shift: shiftType,
-                        textColor: _shiftTextColors[shiftType],
+                      return Theme(
+                        data: Theme.of(this.context),
+                        child: DayCell(
+                          day: day,
+                          shiftColor: _shiftColors[shiftType],
+                          shift: shiftType,
+                          textColor: _shiftTextColors[shiftType],
+                        ),
                       );
                     },
                     todayBuilder: (context, day, focusedDay) {
                       final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
                       final shiftType = shiftData?['type_name'] as String?;
-                      return DayCell(
-                        day: day,
-                        shift: shiftType,
-                        shiftColor: _shiftColors[shiftType],
-                        textColor: _shiftTextColors[shiftType],
+                      return Theme(
+                        data: Theme.of(this.context),
+                        child: DayCell(
+                          day: day,
+                          shiftColor: _shiftColors[shiftType],
+                          shift: shiftType,
+                          textColor: _shiftTextColors[shiftType],
+                        ),
                       );
                     },
                     selectedBuilder: (context, day, focusedDay) {
                       final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
                       final shiftType = shiftData?['type_name'] as String?;
-                      return DayCell(
-                        day: day,
-                        shift: shiftType,
-                        shiftColor: _shiftColors[shiftType],
-                        textColor: _shiftTextColors[shiftType],
+                      return Theme(
+                        data: Theme.of(this.context),
+                        child: DayCell(
+                          day: day,
+                          shiftColor: _shiftColors[shiftType],
+                          shift: shiftType,
+                          textColor: _shiftTextColors[shiftType],
+                        ),
                       );
                     },
                   ),
@@ -269,24 +278,24 @@ class _CalendarViewState extends State<CalendarView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Visibility(
-                      visible: _isAdmin,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FloatingActionButton(
-                            heroTag: 'editButton',
-                            onPressed: () {
-                              context.pushNamed('holidayEditor');
-                            },
-                            tooltip: 'Feiertage bearbeiten',
-                            backgroundColor: CHRONOSTheme.secondary,
-                            child: const Icon(Icons.edit_calendar,
-                                color: CHRONOSTheme.onSecondary),
-                          ),
-                        ],
-                      )),
-                  const SizedBox(height: 8),
+                  // Visibility(
+                  //     visible: _isAdmin,
+                  //     child: Column(
+                  //       mainAxisSize: MainAxisSize.min,
+                  //       children: [
+                  //         FloatingActionButton(
+                  //           heroTag: 'editButton',
+                  //           onPressed: () {
+                  //             context.pushNamed('holidayEditor');
+                  //           },
+                  //           tooltip: 'Feiertage bearbeiten',
+                  //           backgroundColor: CHRONOSTheme.primary,
+                  //           child: const Icon(Icons.edit_calendar,
+                  //               color: CHRONOSTheme.onPrimary),
+                  //         ),
+                  //       ],
+                  //     )),
+                  // const SizedBox(height: 8),
                   Visibility(
                     visible: !isCurrentMonth,
                     child: FloatingActionButton(
@@ -298,9 +307,9 @@ class _CalendarViewState extends State<CalendarView> {
                         });
                       },
                       tooltip: 'Zum aktuellen Monat springen',
-                      backgroundColor: CHRONOSTheme.secondary,
+                      backgroundColor: CHRONOSTheme.primary,
                       child: const Icon(Symbols.today_rounded,
-                          color: CHRONOSTheme.onSecondary),
+                          color: CHRONOSTheme.onPrimary),
                     ),
                   ),
                 ],

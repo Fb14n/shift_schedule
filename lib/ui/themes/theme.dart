@@ -5,8 +5,8 @@ import 'package:shift_schedule/ui/themes/theme_colors.dart';
 class CHRONOSTheme {
   static const Color primary = Color(0xFF174165);
   static const Color onPrimary = Colors.white;
-  static const Color secondary = Colors.white;
-  static const Color onSecondary = Color(0xFF305CA3);
+  static const Color secondary = Color(0xFF305CA3);
+  static const Color onSecondary = Colors.white;
   static const Color error = Colors.red;
   static const Color success = Colors.green;
 

@@ -68,12 +68,11 @@ class DayDetailPopup extends StatelessWidget {
               ),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                //color: Theme.of(context).dialogBackgroundColor,
                 color: CHRONOSTheme.of(context).popUpBackground,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                      //color: Colors.green, //Box Shadow
+                      color: CHRONOSTheme.of(context).popUpShadow,
                       blurRadius: 12
                   )
                 ],
