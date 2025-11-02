@@ -44,7 +44,7 @@ class DayCell extends StatelessWidget {
     return Container(
       decoration: CalendarDayDecoration(
         color: Colors.transparent,
-        borderColor: borderColor ?? CHRONOSTheme.borderColorDefault(context),
+        borderColor: borderColor ?? CHRONOSTheme.of(context).borderColorDefault,
       ).decoration,
       margin: EdgeInsets.fromLTRB(2,4,2,0),
       alignment: Alignment.topCenter,

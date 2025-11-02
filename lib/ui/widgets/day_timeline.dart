@@ -3,8 +3,8 @@ import 'package:shift_schedule/ui/themes/theme.dart';
 
 
 class ShiftEntry {
-  final double startHour; // Geändert zu double für Minuten
-  final double endHour;   // Geändert zu double für Minuten
+  final double startHour;
+  final double endHour;
   final String label;
   final Color color;
   final Color? textColor;
@@ -13,7 +13,7 @@ class ShiftEntry {
     required this.startHour,
     required this.endHour,
     required this.label,
-    this.color = Colors.blueAccent,
+    required this.color,
     this.textColor = Colors.white,
   });
 }
@@ -26,7 +26,6 @@ class DayTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hourHeight = MediaQuery.of(context).size.height / 24 > 60 ? 60.0 : MediaQuery.of(context).size.height / 24;
-
     return SingleChildScrollView(
       child: SizedBox(
         height: hourHeight * 24,
@@ -40,7 +39,9 @@ class DayTimeline extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       border: Border(
-                        bottom: BorderSide(color: CHRONOSTheme.borderColorDefault(context)),
+                        bottom: BorderSide(
+                            color: CHRONOSTheme.of(context).borderColorDefault,
+                        ),
                       ),
                     ),
                     child: Row(
@@ -49,7 +50,10 @@ class DayTimeline extends StatelessWidget {
                           width: 48,
                           child: Text(
                             '${idx.toString().padLeft(2, '0')}:00',
-                            style: const TextStyle(fontSize: 12),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: CHRONOSTheme.of(context).borderColorDefault,
+                            ),
                           ),
                         ),
                         const Expanded(child: SizedBox()),
@@ -58,7 +62,6 @@ class DayTimeline extends StatelessWidget {
                   );
                 }),
               ),
-              // Shift-Balken
               for (final s in shifts)
                 Positioned(
                   top: s.startHour * hourHeight,
@@ -68,9 +71,9 @@ class DayTimeline extends StatelessWidget {
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     decoration: BoxDecoration(
-                      color: s.color.withOpacity(0.85),
+                      color: s.color,
                       borderRadius: BorderRadius.circular(8),
-                      boxShadow: [BoxShadow(color: s.color.withOpacity(0.25), blurRadius: 6)],
+                      boxShadow: [BoxShadow(color: s.color, blurRadius: 6)],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

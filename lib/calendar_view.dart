@@ -166,7 +166,10 @@ class _CalendarViewState extends State<CalendarView> {
       barrierLabel: 'Tag schließen',
       transitionDuration: const Duration(milliseconds: 280),
       pageBuilder: (context, anim1, anim2) {
-        return DayDetailPopup(day: selectedDay, shifts: shiftsForDay);
+        return Theme(
+            data: Theme.of(this.context),
+            child: DayDetailPopup(day: selectedDay, shifts: shiftsForDay),
+        );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         final curved = Curves.easeOut.transform(animation.value);
