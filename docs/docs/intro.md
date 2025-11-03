@@ -1,47 +1,35 @@
 ---
 sidebar_position: 1
+title: Willkommen bei CHRONOS
 ---
 
-# Tutorial Intro
+# Willkommen bei CHRONOS Shift Schedule
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Willkommen zur offiziellen Dokumentation von **CHRONOS**, deinem modernen und einfachen Schichtplaner. Diese App wurde entwickelt, um dir schnell und unkompliziert einen Überblick über deine kommenden Schichten zu geben.
 
-## Getting Started
+Egal ob du im Krankenhaus, in der Produktion oder im Service arbeitest – CHRONOS ist dein verlässlicher Begleiter.
 
-Get started by **creating a new site**.
+![CHRONOS App Screenshot](@site/static/img/logo.png)
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+## Kernfunktionen im Überblick
 
-### What you'll need
+Unsere App konzentriert sich darauf, dir das Leben leichter zu machen. Hier sind die wichtigsten Features, die du nutzen kannst:
 
-- [Node.js](https://nodejs.org/en/download/) version 20.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+### 📅 Intuitive Kalenderansicht
+Behalte mit einer klaren Monatsansicht stets den Überblick. Deine Schichten werden farblich hervorgehoben, sodass du deinen Plan auf einen Blick erfassen kannst.
 
-## Generate a new site
+### 🔄 Automatische Synchronisierung
+Deine Schichtdaten werden direkt und sicher von einer zentralen Datenquelle geladen. Du musst dich um nichts kümmern und bist immer auf dem neuesten Stand.
 
-Generate a new Docusaurus site using the **classic template**.
+### 🎨 Dynamische Schichtfarben
+Jeder Schichttyp (z.B. Früh, Spät, Nacht) hat eine eigene, anpassbare Farbe. Das sorgt für maximale Übersichtlichkeit und eine schnelle Erfassung deines Monatsplans.
 
-The classic template will automatically be added to your project after you run the command:
+### 📱 Einfache Bedienung
+Keine komplizierten Menüs oder überladenen Bildschirme. Öffne die App und sieh sofort, was für dich relevant ist.
 
-```bash
-npm init docusaurus@latest my-website classic
-```
+## Nächste Schritte
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+Bist du bereit, loszulegen? Folge unserem kurzen Einrichtungs-Guide, um die App mit deinen Daten zu verbinden.
 
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+- **[Zur Installationsanleitung](./installation)**
+- **[Erste Schritte & Nutzung](./erste-schritte)**
