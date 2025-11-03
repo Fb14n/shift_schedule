@@ -1,14 +1,13 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
-import 'package:shift_schedule/ui/themes/theme_colors.dart';
 import 'package:shift_schedule/utils/toggle_theme.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
-class CustomScaffold extends StatelessWidget {
+
+class CustomScaffold extends StatefulWidget {
   final Widget? body;
   final Widget? title;
 
@@ -19,134 +18,209 @@ class CustomScaffold extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final ApiService apiService = ApiService();
+  State<CustomScaffold> createState() => _CustomScaffoldState();
+}
 
-    // --- NEU: Aktuelle Route und Navigations-Status ermitteln ---
+class _CustomScaffoldState extends State<CustomScaffold> {
+  late Future<Map<String, dynamic>> _userDetailsFuture;
+  final ApiService apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _userDetailsFuture = apiService.fetchUserDetails();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final String? currentRoute = GoRouterState.of(context).name;
     final bool canPop = context.canPop();
+    final themeMode = ThemeManager.themeModeNotifier.value;
+    final String logoAsset = Theme.of(context).brightness == Brightness.light
+        ? 'assets/logo/logo_vertical.svg'
+        : 'assets/logo/logo_vertical_dark.svg';
 
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: ThemeManager.themeModeNotifier,
-      builder: (context, themeMode, child) {
-        return MaterialApp(
-          theme: ThemeData.light(),
-          darkTheme: ThemeData.dark(),
-          themeMode: themeMode,
-          home: Scaffold(
-            appBar: AppBar(
-              centerTitle: true,
-              title: title ?? Image.asset('assets/logo/logo_vertical.png', height: 40),
-              // --- NEU: Logik für den Leading-Button (Person vs. Zurück-Pfeil) ---
-              leading: canPop
-                  ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.pop(),
-              )
-                  : Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Symbols.person),
-                  onPressed: () {
-                    Scaffold.of(context).openDrawer();
-                  },
-                ),
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(
-                    themeMode == ThemeMode.light
-                        ? Symbols.dark_mode
-                        : Symbols.light_mode,
-                  ),
-                  onPressed: ThemeManager.toggleTheme,
-                ),
-                // --- NEU: "Settings"-Button nur anzeigen, wenn nicht auf der Settings-Seite ---
-                if (currentRoute != 'settings')
-                  IconButton(
-                    icon: const Icon(Symbols.settings_rounded),
-                    onPressed: () => context.pushNamed('settings'),
-                  ),
-              ],
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        title: widget.title ?? SvgPicture.asset(logoAsset, height: 40),
+        leading: canPop
+            ? IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        )
+            : Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Symbols.person),
+            onPressed: () {
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
+        actions: [
+          // IconButton(
+          //   icon: Icon(
+          //     themeMode == ThemeMode.light
+          //         ? Symbols.dark_mode
+          //         : Symbols.light_mode,
+          //   ),
+          //   onPressed: ThemeManager.toggleTheme,
+          // ),
+          if (currentRoute != 'settings')
+            IconButton(
+              icon: const Icon(Symbols.settings_rounded),
+              onPressed: () => context.pushNamed('settings'),
             ),
-            drawer: FutureBuilder<Map<String, dynamic>>(
-              future: apiService.fetchUserDetails(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else {
-                  final userDetails = snapshot.data!;
-                  final firstName = userDetails['first_name'] ?? '';
-                  final lastName = userDetails['last_name'] ?? '';
-                  final employeeId = userDetails['employee_id'] ?? '';
-                  final vacationDays = userDetails['vacation_days'] ?? 0;
-                  final sickDays = userDetails['sick_days'] ?? 0;
+        ],
+      ),
+      drawer: Drawer(
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: _userDetailsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary));
+            }
 
-                  return Drawer(
-                    child: ListView(
-                      padding: EdgeInsets.zero,
-                      children: [
-                        DrawerHeader(
-                          decoration: BoxDecoration(
-                            color: CHRONOSTheme.primary,
+            if (snapshot.hasError || !snapshot.hasData) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Benutzerdaten konnten nicht geladen werden.\nFehler: ${snapshot.error}',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            }
+
+            final userDetails = snapshot.data!;
+            final firstName = userDetails['first_name'] ?? 'Unbekannt';
+            final lastName = userDetails['last_name'] ?? '';
+            final employeeId =
+                userDetails['employee_id']?.toString() ?? 'Keine ID';
+            final vacationDays = userDetails['vacation_days'] ?? 0;
+            final sickDays = userDetails['sick_days'] ?? 0;
+
+            return Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      UserAccountsDrawerHeader(
+                        accountName: Text(
+                          '$firstName $lastName',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: CHRONOSTheme.onPrimary,
                           ),
+                        ),
+                        accountEmail: Text(
+                          'Mitarbeiter-ID: $employeeId',
+                          style: const TextStyle(
+                            color: CHRONOSTheme.onPrimary,
+                          ),
+                        ),
+                        currentAccountPicture: CircleAvatar(
+                          backgroundColor: CHRONOSTheme.onPrimary,
                           child: Text(
-                            '$firstName $lastName\nID: ${employeeId.toString()}',
+                            firstName.isNotEmpty ? firstName[0] : '?',
                             style: const TextStyle(
-                              color: CHRONOSTheme.onPrimary,
-                              fontSize: 24,
+                              fontSize: 40.0,
+                              fontWeight: FontWeight.bold,
+                              color: CHRONOSTheme.primary,
                             ),
                           ),
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.beach_access),
-                          title: Text('$vacationDays Tage Resturlaub'),
+                        decoration: const BoxDecoration(
+                          color: CHRONOSTheme.primary,
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.sick),
-                          title: Text('$sickDays Tage Krank'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.beach_access_outlined),
+                        title: const Text('Resturlaub'),
+                        trailing: Text(
+                          '$vacationDays Tage',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: CHRONOSTheme.of(context).onBackground,
+                          ),
                         ),
-                        ListTile(
-                          leading: const Icon(Icons.logout),
-                          title: const Text('Abmelden'),
-                          onTap: () async {
-                            final shouldLogout = await showDialog<bool>(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: const Text('Abmelden bestätigen'),
-                                  content: const Text('Möchten Sie sich wirklich abmelden?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.of(context).pop(true), // Cancel
-                                      child: const Text('Ja', style: TextStyle(color: CHRONOSTheme.primary),),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.of(context).pop(false), // Confirm
-                                      child: const Text('Nein', style: TextStyle(color: CHRONOSTheme.error),),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.sick_outlined),
+                        title: const Text('Krankheitstage'),
+                        trailing: Text(
+                          '$sickDays Tage',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: CHRONOSTheme.of(context).onBackground,
+                          ),
+                        ),
+                      ),
+                      const Divider(),
+                      ListTile(
+                        leading: const Icon(Symbols.logout,
+                            color: CHRONOSTheme.error),
+                        title: const Text(
+                          'Abmelden',
+                          style: TextStyle(color: CHRONOSTheme.error),
+                        ),
+                        onTap: () async {
+                          final shouldLogout = await showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text('Abmelden bestätigen'),
+                                content: const Text(
+                                    'Möchten Sie sich wirklich abmelden?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(true),
+                                    child: const Text('Ja',
+                                        style: TextStyle(
+                                            color: CHRONOSTheme.error)),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    child: const Text('Nein',
+                                        style: TextStyle(color: CHRONOSTheme.secondary)),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
 
-                            if (shouldLogout == true) {
-                              await apiService.logout();
-                              context.pushReplacement('/login');
+                          if (shouldLogout == true) {
+                            await apiService.logout();
+                            if (context.mounted) {
+                              context.go('/login');
                             }
-                          },
-                        ),
-                      ],
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    'CHRONOS © ${DateTime.now().year}\nDeveloped by Fabian Berger',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: CHRONOSTheme.of(context).onBackgroundLight,
+                      fontSize: 12,
                     ),
-                  );
-                }
-              },
-            ),
-            body: body,
-          ),
-        );
-      },
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+      body: widget.body,
     );
   }
 }

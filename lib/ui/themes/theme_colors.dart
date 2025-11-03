@@ -11,6 +11,8 @@ class CHRONOSColors extends ThemeExtension<CHRONOSColors> {
   Color get popUpBackground => _colors['popUpBackground']!;
   Color get borderColorDefault => _colors['borderColorDefault']!;
   Color get popUpShadow => _colors['popUpShadow']!;
+  Color get onBackground => _colors['onBackground']!;
+  Color get onBackgroundLight => _colors['onBackgroundLight']!;
 
   @override
   CHRONOSColors copyWith({Map<String, Color>? colors}) =>
@@ -31,11 +33,15 @@ class CHRONOSColors extends ThemeExtension<CHRONOSColors> {
     'popUpBackground': Colors.white,
     'popUpShadow': Colors.white,
     'borderColorDefault': Colors.black,
+    'onBackground': Colors.black,
+    'onBackgroundLight': Colors.black54,
   });
 
   static final dark = CHRONOSColors({
     'popUpBackground': Colors.black,
     'popUpShadow': Colors.white,
     'borderColorDefault': Colors.white,
+    'onBackground': Colors.white,
+    'onBackgroundLight': Colors.grey,
   });
 }

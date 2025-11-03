@@ -1,10 +1,11 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:go_router/go_router.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
-
+import 'package:shift_schedule/utils/toggle_theme.dart';
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -15,167 +16,274 @@ class SettingsView extends StatefulWidget {
 
 class _SettingsViewState extends State<SettingsView> {
   final ApiService _apiService = ApiService();
-  List<Map<String, dynamic>> _shiftTypes = [];
-  bool _isLoading = true;
-  String? _errorMessage;
+  Future<Map<String, dynamic>>? _userDetailsFuture;
+  ThemeMode _currentThemeMode = ThemeManager.themeModeNotifier.value;
+  Map<String, dynamic>? _userDetails;
 
   @override
   void initState() {
     super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadShiftTypes();
-    });
+    _userDetailsFuture = _apiService.fetchUserDetails();
+    ThemeManager.themeModeNotifier.addListener(_onThemeChanged);
   }
 
-  Future<void> _loadShiftTypes() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  @override
+  void dispose() {
+    ThemeManager.themeModeNotifier.removeListener(_onThemeChanged);
+    super.dispose();
+  }
 
-    try {
-      final types = await _apiService.getShiftTypes();
-      if (mounted) {
-        setState(() {
-          _shiftTypes = types;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      log('Fehler beim Laden der Schichttypen: $e', name: 'SettingsPage');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Fehler beim Laden der Einstellungen.\nBitte überprüfe deine Serververbindung.';
-        });
-      }
+  void _onThemeChanged() {
+    if (mounted) {
+      setState(() {
+        _currentThemeMode = ThemeManager.themeModeNotifier.value;
+      });
     }
   }
 
-  Color _colorFromHex(String hexColor) {
-    hexColor = hexColor.toUpperCase().replaceAll('#', '');
-    if (hexColor.length == 6) {
-      hexColor = 'FF$hexColor';
-    }
-    return Color(int.parse(hexColor, radix: 16));
-  }
-
-  String _colorToHex(Color color) {
-    return '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
-  }
-
-  void _showColorPicker(Map<String, dynamic> shiftType) {
-    Color pickerColor = _colorFromHex(shiftType['type_color']);
-
-    showDialog(
+  Future<void> _logout() async {
+    final shouldLogout = await showDialog<bool>(
       context: context,
-      builder: (context) {
+      builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Farbe für "${shiftType['type_name']}" wählen'),
-          content: SingleChildScrollView(
-            child: ColorPicker(
-              pickerColor: pickerColor,
-              onColorChanged: (color) {
-                pickerColor = color;
-              },
-              pickerAreaHeightPercent: 0.8,
-            ),
-          ),
-          actions: <Widget>[
+          title: const Text('Abmelden bestätigen'),
+          content: const Text('Möchten Sie sich wirklich abmelden?'),
+          actions: [
             TextButton(
-              child: const Text('Abbrechen'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Ja', style: TextStyle(color: CHRONOSTheme.error)),
             ),
-            TextButton(
-              child: const Text('Speichern'),
-              onPressed: () {
-                _updateColor(shiftType['id'], pickerColor);
-                Navigator.of(context).pop();
-              },
+            ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Nein',
+                    style: TextStyle(color: CHRONOSTheme.secondary)),
             ),
           ],
         );
       },
     );
-  }
 
-  Future<void> _updateColor(int id, Color newColor) async {
-    final hexColor = _colorToHex(newColor);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    try {
-      await _apiService.updateShiftTypeColor(id, hexColor);
-
-      setState(() {
-        final index = _shiftTypes.indexWhere((type) => type['id'] == id);
-        if (index != -1) {
-          _shiftTypes[index]['type_color'] = hexColor;
-        }
-      });
-
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('Farbe erfolgreich aktualisiert!'),
-          backgroundColor: CHRONOSTheme.success,
-        ),
-      );
-    } catch (e) {
-      log('Fehler beim Aktualisieren der Farbe: $e', name: 'SettingsPage');
-
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('Fehler beim Aktualisieren: ${e.toString()}'),
-          backgroundColor: CHRONOSTheme.error,
-        ),
-      );
+    if (shouldLogout == true) {
+      await _apiService.logout();
+      if (mounted) {
+        context.go('/login');
+      }
     }
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+  void _showVerifyOldPasswordDialog() {
+    if (_userDetails == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Benutzerdaten noch nicht geladen.'),
+        backgroundColor: CHRONOSTheme.error,
+      ));
+      return;
     }
 
-    if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            _errorMessage!,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: CHRONOSTheme.error, fontSize: 16),
-          ),
-        ),
-      );
-    }
+    final oldPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+    String? serverError;
 
-    return RefreshIndicator(
-      onRefresh: _loadShiftTypes,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: _shiftTypes.length,
-        itemBuilder: (context, index) {
-          final shiftType = _shiftTypes[index];
-          final color = _colorFromHex(shiftType['type_color']);
-
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 8.0),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-              leading: CircleAvatar(
-                backgroundColor: color,
-                radius: 20,
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateInDialog) {
+          return AlertDialog(
+            title: const Text('Aktuelles Passwort bestätigen'),
+            content: Form(
+              key: formKey,
+              child: TextFormField(
+                controller: oldPasswordController,
+                cursorColor: CHRONOSTheme.secondary,
+                decoration: InputDecoration(
+                  labelText: 'Aktuelles Passwort',
+                  floatingLabelStyle:
+                  TextStyle(color: CHRONOSTheme.secondary),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: CHRONOSTheme.secondary),
+                  ),
+                  errorText: serverError,
+                ),
+                obscureText: true,
+                validator: (value) => value!.isEmpty
+                    ? 'Bitte aktuelles Passwort eingeben'
+                    : null,
+                onChanged: (_) {
+                  if (serverError != null) {
+                    setStateInDialog(() {
+                      serverError = null;
+                    });
+                  }
+                },
               ),
-              title: Text(
-                shiftType['type_name'],
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              trailing: const Icon(Icons.colorize),
-              onTap: () => _showColorPicker(shiftType),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Abbrechen', style: TextStyle(color: CHRONOSTheme.error)),
+              ),
+              isLoading
+                  ? const CircularProgressIndicator(color: CHRONOSTheme.secondary)
+                  : ElevatedButton(
+                onPressed: () async {
+                  setStateInDialog(() {
+                    serverError = null;
+                  });
+                  if (!formKey.currentState!.validate()) return;
+
+                  setStateInDialog(() => isLoading = true);
+
+                  final String username = _userDetails!['first_name'];
+
+                  try {
+                    await _apiService.login(
+                        username, oldPasswordController.text);
+
+                    final currentToken = await _apiService.getToken();
+                    if (currentToken != null) {
+                      await _apiService.saveToken(currentToken);
+                    }
+
+                    if (!mounted) return;
+
+                    Navigator.of(dialogContext).pop();
+                    _showEnterNewPasswordDialog();
+
+                  } catch (e) {
+                    log('Passwort-Verifizierung fehlgeschlagen: $e', name: 'SettingsView');
+                    setStateInDialog(() {
+                      serverError = 'Falsches Passwort. Bitte erneut versuchen.';
+                      isLoading = false;
+                  });
+                  }
+                },
+                child: const Text('Bestätigen', style: TextStyle(color: CHRONOSTheme.secondary)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showEnterNewPasswordDialog() {
+    if (_userDetails == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Benutzerdaten nicht verfügbar. Bitte warten.'),
+            backgroundColor: CHRONOSTheme.error),
+      );
+      return;
+    }
+
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final String username = _userDetails!['first_name'] ?? '';
+    final String employeeId = _userDetails!['employee_id']?.toString() ?? '';
+    bool isLoading = false;
+    String? serverError;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateInDialog) {
+          return AlertDialog(
+            title: const Text('Neues Passwort festlegen'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: newPasswordController,
+                    cursorColor: CHRONOSTheme.secondary,
+                    decoration: const InputDecoration(
+                      labelText: 'Neues Passwort',
+                      floatingLabelStyle: TextStyle(color: CHRONOSTheme.secondary),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: CHRONOSTheme.secondary),
+                      ),
+                    ),
+                    obscureText: true,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Bitte neues Passwort eingeben';
+                      }
+                      if (value.length < 6) {
+                        return 'Passwort muss mind. 6 Zeichen haben';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: confirmPasswordController,
+                    cursorColor: CHRONOSTheme.secondary,
+                    decoration: const InputDecoration(
+                      labelText: 'Passwort bestätigen',
+                      floatingLabelStyle: TextStyle(color: CHRONOSTheme.secondary),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: CHRONOSTheme.secondary),
+                      ),
+                    ),
+                    obscureText: true,
+                    validator: (value) => value != newPasswordController.text
+                        ? 'Passwörter stimmen nicht überein'
+                        : null,
+                  ),
+                  if (serverError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Text(
+                        serverError!,
+                        style: const TextStyle(color: CHRONOSTheme.error, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Abbrechen', style: TextStyle(color: CHRONOSTheme.error)),
+              ),
+              isLoading
+                  ? const CircularProgressIndicator(color: CHRONOSTheme.secondary)
+                  : ElevatedButton(
+                onPressed: () async {
+                  setStateInDialog(() {
+                    serverError = null;
+                  });
+
+                  if (!formKey.currentState!.validate()) return;
+                  setStateInDialog(() => isLoading = true);
+
+                  try {
+                    await _apiService.resetPassword(
+                      username: username,
+                      employeeId: employeeId,
+                      newPassword: newPasswordController.text,
+                    );
+
+                    if (!mounted) return;
+                    Navigator.of(dialogContext).pop();
+                    await _apiService.logout();
+                    GoRouter.of(context).go('/login');
+
+                  } catch (e) {
+                    log('Password change failed: $e', name: 'SettingsView');
+                    setStateInDialog(() {
+                      serverError = 'Passwort konnte nicht geändert werden. Bitte versuchen Sie es erneut.';
+                      isLoading = false;
+                    });
+                  }
+                },
+                child: const Text('Speichern & Abmelden', style: TextStyle(color: CHRONOSTheme.secondary)),
+              ),
+            ],
           );
         },
       ),
@@ -185,8 +293,108 @@ class _SettingsViewState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
     return CustomScaffold(
-      title: Text('Einstellungen'),
-      body: _buildBody(),
+      title: const Text('Einstellungen'),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+        child: Column(
+          children: [
+            _buildUserInfoSection(),
+            const SizedBox(height: 32),
+            _buildSettingsList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserInfoSection() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _userDetailsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary));
+        }
+        if (snapshot.hasError || !snapshot.hasData) {
+          return const Center(
+              child: Text('Benutzerdaten konnten nicht geladen werden.'));
+        }
+
+        _userDetails = snapshot.data;
+        final user = _userDetails!;
+
+        final firstName = user['first_name'] ?? 'Unbekannt';
+        final lastName = user['last_name'] ?? '';
+        final employeeId = user['employee_id']?.toString() ?? 'Keine ID';
+
+        return Column(
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: CHRONOSTheme.primary,
+              child: Text(
+                firstName.isNotEmpty ? firstName[0] : '?',
+                style: const TextStyle(
+                    fontSize: 40.0,
+                    fontWeight: FontWeight.bold,
+                    color: CHRONOSTheme.onPrimary),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$firstName $lastName',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Mitarbeiter-ID: $employeeId',
+              style: TextStyle(
+                  fontSize: 16,
+                  color: CHRONOSTheme.of(context).onBackgroundLight),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSettingsList() {
+    final isDarkMode = _currentThemeMode == ThemeMode.dark;
+
+    return Column(
+      children: [
+        ListTile(
+          onTap: ThemeManager.toggleTheme,
+          leading: Icon(
+            isDarkMode ? Symbols.dark_mode : Symbols.light_mode,
+          ),
+          title: Text(isDarkMode ? 'Dunkelmodus' : 'Hellmodus'),
+          trailing: Switch(
+            trackColor: WidgetStatePropertyAll(
+                isDarkMode ? CHRONOSTheme.primary : CHRONOSTheme.secondary),
+            thumbColor: WidgetStatePropertyAll(
+                isDarkMode ? CHRONOSTheme.secondary : CHRONOSTheme.primary
+            ),
+            trackOutlineColor: WidgetStatePropertyAll(Colors.transparent),
+            value: isDarkMode,
+            onChanged: (bool value) {
+              ThemeManager.toggleTheme();
+            },
+          ),
+        ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Symbols.lock_reset),
+          title: const Text('Passwort ändern'),
+          onTap: _showVerifyOldPasswordDialog,
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        ),
+        const Divider(),
+        ListTile(
+          leading: const Icon(Symbols.logout, color: CHRONOSTheme.error),
+          title: const Text('Abmelden', style: TextStyle(color: CHRONOSTheme.error)),
+          onTap: _logout,
+        ),
+      ],
     );
   }
 }

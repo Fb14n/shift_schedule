@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shift_schedule/ui/themes/theme_colors.dart';
 
-
 class CHRONOSTheme {
   static const Color primary = Color(0xFF174165);
   static const Color onPrimary = Colors.white;

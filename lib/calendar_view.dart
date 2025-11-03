@@ -184,7 +184,7 @@ class _CalendarViewState extends State<CalendarView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary));
     }
     final isCurrentMonth = _focusedDay.year == DateTime.now().year &&
         _focusedDay.month == DateTime.now().month;
