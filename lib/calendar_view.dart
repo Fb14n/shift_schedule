@@ -1,7 +1,6 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
@@ -33,7 +32,6 @@ class _CalendarViewState extends State<CalendarView> {
   final ApiService apiService = ApiService();
   bool _isNextEnabled = true;
   bool _isPrevEnabled = true;
-  bool _isAdmin = false;
   Map<String, Color> _shiftColors = {};
   Map<String, Color> _shiftTextColors = {};
 
@@ -42,7 +40,6 @@ class _CalendarViewState extends State<CalendarView> {
     super.initState();
     _updateNavigationButtons();
     _loadAllData();
-    _checkAdminStatus();
   }
 
   Future<void> _loadShiftColors() async {
@@ -72,23 +69,6 @@ class _CalendarViewState extends State<CalendarView> {
       }
     } catch (e) {
       log('Error loading shift colors: $e', name: 'CalendarView');
-    }
-  }
-
-  Future<void> _checkAdminStatus() async {
-    try {
-      final apiService = ApiService();
-      final userDetails = await apiService.fetchUserDetails();
-      log('User details: $userDetails', name: 'CalendarView');
-      if (userDetails['first_name'] == 'Bob') {
-        if (mounted) {
-          setState(() {
-            _isAdmin = true;
-          });
-        }
-      }
-    } catch (e) {
-      log('Error checking admin status: $e', name: 'CalendarView');
     }
   }
 
@@ -209,12 +189,18 @@ class _CalendarViewState extends State<CalendarView> {
                   calendarFormat: _calendarFormat,
                   selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                   onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _selectedDay = DateTime(
-                          selectedDay.year, selectedDay.month, selectedDay.day);
-                      _focusedDay = focusedDay;
-                    });
                     _showDayPopup(selectedDay);
+                    if (selectedDay.month == focusedDay.month) {
+                      if (!isSameDay(_selectedDay, selectedDay)) {
+                        setState(() {
+                          _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+                        });
+                      }
+                    } else {
+                      setState(() {
+                        _selectedDay = null;
+                      });
+                    }
                   },
                   onPageChanged: (focusedDay) {
                     setState(() {
@@ -275,44 +261,23 @@ class _CalendarViewState extends State<CalendarView> {
             Positioned(
               bottom: 24,
               right: 24,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Visibility(
-                  //     visible: _isAdmin,
-                  //     child: Column(
-                  //       mainAxisSize: MainAxisSize.min,
-                  //       children: [
-                  //         FloatingActionButton(
-                  //           heroTag: 'editButton',
-                  //           onPressed: () {
-                  //             context.pushNamed('holidayEditor');
-                  //           },
-                  //           tooltip: 'Feiertage bearbeiten',
-                  //           backgroundColor: CHRONOSTheme.primary,
-                  //           child: const Icon(Icons.edit_calendar,
-                  //               color: CHRONOSTheme.onPrimary),
-                  //         ),
-                  //       ],
-                  //     )),
-                  // const SizedBox(height: 8),
-                  Visibility(
-                    visible: !isCurrentMonth,
-                    child: FloatingActionButton(
-                      heroTag: 'todayButton',
-                      onPressed: () {
-                        setState(() {
-                          _focusedDay = DateTime.now();
-                          _updateNavigationButtons();
-                        });
-                      },
-                      tooltip: 'Zum aktuellen Monat springen',
-                      backgroundColor: CHRONOSTheme.primary,
-                      child: const Icon(Symbols.today_rounded,
-                          color: CHRONOSTheme.onPrimary),
-                    ),
+              child: Visibility(
+                visible: !isCurrentMonth,
+                child: FloatingActionButton(
+                  heroTag: 'todayButton',
+                  onPressed: () {
+                    setState(() {
+                      _focusedDay = DateTime.now();
+                      _updateNavigationButtons();
+                    });
+                  },
+                  tooltip: 'Zum aktuellen Monat springen',
+                  backgroundColor: CHRONOSTheme.primary,
+                  child: const Icon(
+                      Symbols.today_rounded,
+                      color: CHRONOSTheme.onPrimary
                   ),
-                ],
+                ),
               ),
             ),
           ],

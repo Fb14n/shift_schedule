@@ -102,7 +102,7 @@ class DayDetailPopup extends StatelessWidget {
                   const SizedBox(height: 8),
                   Flexible(
                     child: shiftEntries.isEmpty
-                        ? const Center(child: Text('Keine Schicht'))
+                        ? DayTimeline(shifts: [])
                         : DayTimeline(shifts: shiftEntries),
                   ),
                 ],
