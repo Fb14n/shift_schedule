@@ -53,7 +53,7 @@ const config: Config = {
                 { to: '/login', label: 'Login', position: 'right' },
             ],
         },
-        footer: { style: 'light', links: [], copyright: `Copyright © ${new Date().getFullYear()} Fabian Berger` },
+        footer: { style: 'dark', links: [], copyright: `Copyright © ${new Date().getFullYear()} Fabian Berger` },
         prism: { theme: prismThemes.github, darkTheme: prismThemes.dracula },
     } satisfies Preset.ThemeConfig,
 };
