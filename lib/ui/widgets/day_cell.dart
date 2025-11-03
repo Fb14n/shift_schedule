@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 
@@ -21,59 +19,32 @@ class DayCell extends StatelessWidget {
     super.key,
     required this.day,
     required this.shift,
-    this.highlight,
+    this.shiftColor,
     this.borderColor,
     this.textColor,
   });
 
   final DateTime day;
   final String? shift;
-  final Color? highlight;
+  final Color? shiftColor;
   final Color? borderColor;
   final Color? textColor;
 
-  Map<String, Color> getColors() {
-    switch (shift) {
-      case 'Frühschicht':
-        return {
-          'background': CHRONOSTheme.dayCellColors.earlyShift,
-        };
-      case 'Spätschicht':
-        return {
-          'background': CHRONOSTheme.dayCellColors.lateShift,
-          'text': CHRONOSTheme.dayCellColors.onLateShift,
-        };
-      case 'Urlaub':
-        return {
-          'background': CHRONOSTheme.dayCellColors.holiday,
-          'text': CHRONOSTheme.dayCellColors.onHoliday,
-        };
-      case 'Krankheit':
-      case 'Krank':
-        return {
-          'background': CHRONOSTheme.dayCellColors.sick,
-          'text': CHRONOSTheme.dayCellColors.onSick,
-        };
-      default:
-        return {
-          'background': CHRONOSTheme.dayCellColors.defaultColor,
-        };
-    }
-  }
-  getTodayColor() {
-    if (DateTime.now().day == day.day) {
-      log("Today: ${day.day}, Shift: ${shift}, Colors: ${getColors()}");
-      return getColors()['background']!;
+  isToday() {
+    final now = DateTime.now();
+    if (now.year == day.year && now.month == day.month && now.day == day.day) {
+      return true;
+    } else {
+      return false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = getColors();
     return Container(
       decoration: CalendarDayDecoration(
-        color: highlight ?? colors['background']!,
-        borderColor: borderColor ?? CHRONOSTheme.borderColorDefault(context),
+        color: Colors.transparent,
+        borderColor: borderColor ?? CHRONOSTheme.of(context).borderColorDefault,
       ).decoration,
       margin: EdgeInsets.fromLTRB(2,4,2,0),
       alignment: Alignment.topCenter,
@@ -87,12 +58,14 @@ class DayCell extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: getTodayColor(),
+                color: isToday() ?? true ? shiftColor : Colors.transparent,
                 shape: BoxShape.circle,
               ),
               child: Text(
                 '${day.day}',
-                style: TextStyle(color: textColor),
+                style: TextStyle(
+                  color: isToday() ?? true ? textColor : null,
+                ),
               ),
             ),
           ),
@@ -103,7 +76,7 @@ class DayCell extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),
-                color: colors['background']!,
+                color: shiftColor,
               ),
               alignment: Alignment.center,
               child: FittedBox(

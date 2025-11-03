@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shift_schedule/services/api_service.dart';
+import 'package:shift_schedule/ui/themes/theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -57,29 +58,181 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _showForgotPasswordDialog() {
+    final usernameController = TextEditingController();
+    final employeeIdController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Passwort zurücksetzen'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: usernameController,
+                  decoration: const InputDecoration(labelText: 'Benutzername (Vorname)'),
+                  validator: (value) => value!.isEmpty ? 'Bitte Benutzernamen eingeben' : null,
+                ),
+                TextFormField(
+                  controller: employeeIdController,
+                  decoration: const InputDecoration(labelText: 'Personalnummer'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value!.isEmpty ? 'Bitte Personalnummer eingeben' : null,
+                ),
+                TextFormField(
+                  controller: newPasswordController,
+                  decoration: const InputDecoration(labelText: 'Neues Passwort'),
+                  obscureText: true,
+                  validator: (value) => value!.isEmpty ? 'Bitte neues Passwort eingeben' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Abbrechen'),
+            ),
+// In der Datei login_page.dart, innerhalb von _showForgotPasswordDialog
+
+            ElevatedButton(
+              onPressed: () async {
+                // 1. Prüfen, ob das Formular valide ist. Wenn nicht, passiert nichts.
+                if (!formKey.currentState!.validate()) {
+                  return;
+                }
+
+                // 2. Den ScaffoldMessenger und Navigator SICHERN, BEVOR der Dialog geschlossen wird.
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
+
+                // 3. Den Dialog mit dem gesicherten Navigator schließen.
+                navigator.pop();
+
+                // 4. Lade-Nachricht mit dem gesicherten ScaffoldMessenger anzeigen.
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(content: Text('Setze Passwort zurück...')),
+                );
+
+                try {
+                  // 5. Die asynchrone Netzwerk-Anfrage ausführen.
+                  await _apiService.resetPassword(
+                    username: usernameController.text,
+                    employeeId: employeeIdController.text,
+                    newPassword: newPasswordController.text,
+                  );
+
+                  // 6. NACH dem await: Die Erfolgs-SnackBar anzeigen. Dies ist jetzt sicher.
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Passwort erfolgreich zurückgesetzt! Du kannst dich jetzt anmelden.'),
+                      backgroundColor: CHRONOSTheme.success,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+
+                } catch (e) {
+                  log('Password reset failed: $e', name: 'LoginPage');
+
+                  // 7. NACH dem await im Fehlerfall: Die Fehler-SnackBar anzeigen. Dies ist jetzt auch sicher.
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Fehler: ${e.toString()}'),
+                      backgroundColor: CHRONOSTheme.error,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Zurücksetzen'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _usernameController,
-              decoration: const InputDecoration(labelText: 'Username'),
+      backgroundColor: CHRONOSTheme.primary,
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height,
             ),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _usernameController,
+                      cursorColor: CHRONOSTheme.onPrimary,
+                      style: const TextStyle(color: CHRONOSTheme.onPrimary),
+                      decoration: const InputDecoration(
+                        labelText: 'Username',
+                        labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passwordController,
+                      cursorColor: CHRONOSTheme.onPrimary,
+                      style: const TextStyle(color: CHRONOSTheme.onPrimary),
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                        ),
+                      ),
+                      obscureText: true,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: CHRONOSTheme.onPrimary,
+                          foregroundColor: CHRONOSTheme.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Login'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _showForgotPasswordDialog,
+                      child: const Text(
+                        'Passwort vergessen?',
+                        style: TextStyle(color: CHRONOSTheme.onPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _login,
-              child: const Text('Login'),
-            ),
-          ],
+          ),
         ),
       ),
     );

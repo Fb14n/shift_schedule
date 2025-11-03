@@ -37,19 +37,33 @@ pool.connect()
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 
 // Seed-SQL-Datei lesen
-const seedFile = '.assets/db/seed.sql';
-fs.readFile(seedFile, 'utf8', async (err, data) => {
-  if (err) {
-    console.error('Fehler beim Lesen der seed.sql:', err);
-    return;
-  }
+async function runSeed() {
+  const seedFile = './assets/db/seed.sql';
   try {
-    await pool.query(data);
-    console.log('✅ Seed erfolgreich ausgeführt');
-  } catch (err) {
-    console.error('❌ Fehler beim Ausführen der seed.sql:', err.stack);
+    const data = await fs.promises.readFile(seedFile, 'utf8');
+    const statements = data.split(';').filter(statement => statement.trim() !== '');
+
+    const client = await pool.connect();
+    try {
+      console.log('🚀 Starting background seed...');
+      await client.query('BEGIN');
+      for (const statement of statements) {
+        if (statement.trim()) {
+          await client.query(statement);
+        }
+      }
+      await client.query('COMMIT');
+      console.log('✅ Background seed successful.');
+    } catch (dbErr) {
+      await client.query('ROLLBACK');
+      console.error('❌ Error during background seed:', dbErr.stack);
+    } finally {
+      client.release();
+    }
+  } catch (fileErr) {
+    console.error('❌ Error reading seed.sql for background process:', fileErr);
   }
-});
+}
 
 // ---- DB Init ----
 async function initDB() {
@@ -85,27 +99,86 @@ function authenticateToken(req, res, next) {
     });
   }
 
+// --- HILFSFUNKTION ---
+function toHexColor(colorValue) {
+    if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
+        return colorValue; // Ist bereits ein Hex-String
+    }
+    const hex = Number(colorValue).toString(16).padStart(6, '0');
+    return `#${hex.toUpperCase()}`;
+}
+
 // ---- Routes ----
-app.get("/shifts", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader) return res.status(401).json({ error: "Missing token" });
-
-  const token = authHeader.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Missing token" });
-
+app.get("/shifts", authenticateToken, async (req, res) => {
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const userId = payload.userId;
-
+    const userId = req.user.userId;
     const result = await pool.query(
-        'SELECT s.shift_date, st.type_name FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
+        'SELECT s.id, s.shift_date, st.type_name, st.type_color, st.type_time_start, st.type_time_end FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
         [userId]
     );
 
-    res.json(result.rows);
+    const shiftsWithHexColor = result.rows.map(shift => ({
+        ...shift,
+        type_color: toHexColor(shift.type_color)
+    }));
+
+    res.json(shiftsWithHexColor);
 
   } catch (err) {
     console.error("Shifts error:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/shift-types", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, type_name, type_color, type_time_start, type_time_end FROM shift_types ORDER BY id');
+
+    const typesWithHexColor = result.rows.map(type => ({
+        ...type,
+        type_color: toHexColor(type.type_color)
+    }));
+
+    res.json(typesWithHexColor);
+  } catch (err) {
+    console.error("Error fetching shift types:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { color } = req.body;
+
+    if (!color) {
+      return res.status(400).json({ error: "Color is required" });
+    }
+
+    if (!/^#[0-9A-F]{6}$/i.test(color)) {
+      return res.status(400).json({ error: "Invalid color format. Use #RRGGBB." });
+    }
+
+    const colorAsInteger = parseInt(color.substring(1), 16);
+
+    const result = await pool.query(
+      'UPDATE shift_types SET type_color = $1 WHERE id = $2 RETURNING *',
+      [colorAsInteger, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Shift type not found" });
+    }
+
+    const updatedType = {
+        ...result.rows[0],
+        type_color: toHexColor(result.rows[0].type_color)
+    };
+
+    res.json(updatedType);
+
+  } catch (err) {
+    console.error("Error updating shift type color:", err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -157,6 +230,45 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.post("/reset-password", async (req, res) => {
+  const { username, employeeId, newPassword } = req.body;
+
+  // Validierung der Eingabe
+  if (!username || !employeeId || !newPassword) {
+    return res.status(400).json({ error: "Username, employee ID, and new password are required." });
+  }
+
+  try {
+    // Finde den Benutzer basierend auf Vorname UND Personalnummer
+    const userResult = await pool.query(
+      "SELECT id FROM users WHERE first_name = $1 AND employee_id = $2",
+      [username, employeeId]
+    );
+
+    if (userResult.rows.length === 0) {
+      // Wenn kein Benutzer gefunden wird, ist die Identifizierung fehlgeschlagen.
+      return res.status(404).json({ error: "User not found or employee ID is incorrect." });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    // Hashe das neue Passwort
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Aktualisiere das Passwort in der Datenbank
+    await pool.query(
+      "UPDATE users SET password = $1 WHERE id = $2",
+      [hashedNewPassword, userId]
+    );
+
+    res.json({ msg: "Password has been reset successfully." });
+
+  } catch (err) {
+    console.error("Password reset error:", err.stack);
+    res.status(500).json({ error: "Internal server error while resetting password." });
+  }
+});
+
 app.get("/user/details", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -196,5 +308,6 @@ app.get("/user/details", authenticateToken, async (req, res) => {
 // ---- Start Server ----
 const host = process.env.HOST || '0.0.0.0';
 app.listen(3000, host, () => {
-  console.log(`🚀 Server running on :${host}:3000`);
+  console.log(`🚀 Server running on :${host}`);
+  runSeed();
 });
