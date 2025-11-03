@@ -1,66 +1,119 @@
-name: Build & Release Flutter
+  ```yaml
+  name: Build & Release Flutter
 
-permissions:
-  contents: write
+  permissions:
+    contents: write
 
-on:
-  push:
-    branches:
-      - main
-      #- develop
+  on:
+    push:
+      branches:
+        - main
 
-jobs:
-  build-and-release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  jobs:
+    build-android:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+        - name: Set up JDK 17
+          uses: actions/setup-java@v4
+          with:
+            distribution: 'temurin'
+            java-version: '17'
 
-      - name: Cache Flutter dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.pub-cache
-            build
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}
+        - name: Cache Flutter dependencies
+          uses: actions/cache@v3
+          with:
+            path: |
+              ~/.pub-cache
+              build
+            key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.yaml') }}
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
+        - name: Set up Flutter
+          uses: subosito/flutter-action@v2
+          with:
+            channel: 'stable'
 
-      - name: Upgrade dependencies
-        run: flutter pub upgrade
+        - name: Upgrade dependencies
+          run: flutter pub upgrade
 
-      - name: Build APK
-        run: flutter build apk --release
+        - name: Build APK
+          run: flutter build apk --release
 
-      # --- Automatisch Tag erzeugen ---
-      - name: Generate Release Tag
-        id: tag
-        run: |
-          # hole die aktuelle Anzahl der Tags
-          COUNT=$(git tag | wc -l)
-          NEW_TAG="v$((COUNT+1))"
-          echo "new_tag=$NEW_TAG" >> $GITHUB_ENV
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag $NEW_TAG
-          git push origin $NEW_TAG
-          echo "Generated tag: $NEW_TAG"
+        - name: Upload Android APK
+          uses: actions/upload-artifact@v4
+          with:
+            name: android-apk
+            path: build/app/outputs/flutter-apk/app-release.apk
 
-      # --- Release erstellen ---
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.new_tag }}
-          files: |
-            build/app/outputs/flutter-apk/app-release.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    build-ios:
+      runs-on: macos-latest
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Set up Flutter
+          uses: subosito/flutter-action@v2
+          with:
+            channel: 'stable'
+
+        - name: Upgrade dependencies
+          run: flutter pub upgrade
+
+        - name: Build IPA (unsigned)
+          # --no-codesign erzeugt ein unsigned ipa; für signierte Builds müssen Zertifikate/Provisioning bereitgestellt werden
+          run: flutter build ipa --no-codesign
+
+        - name: Upload iOS IPA
+          uses: actions/upload-artifact@v4
+          with:
+            name: ios-ipa
+            path: build/ios/ipa/*.ipa
+
+    create-release:
+      needs: [build-android, build-ios]
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+
+        - name: Download Android APK
+          uses: actions/download-artifact@v4
+          with:
+            name: android-apk
+            path: artifacts/android
+
+        - name: Download iOS IPA
+          uses: actions/download-artifact@v4
+          with:
+            name: ios-ipa
+            path: artifacts/ios
+
+        - name: Generate Release Tag
+          id: tag
+          run: |
+            COUNT=$(git tag | wc -l)
+            NEW_TAG="v$((COUNT+1))"
+            echo "new_tag=$NEW_TAG" >> $GITHUB_ENV
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag $NEW_TAG
+            git push origin $NEW_TAG
+            echo "Generated tag: $NEW_TAG"
+
+        - name: Create GitHub Release
+          uses: softprops/action-gh-release@v1
+          with:
+            tag_name: ${{ env.new_tag }}
+            files: |
+              artifacts/android/app-release.apk
+              artifacts/ios/*.ipa
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
