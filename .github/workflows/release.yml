@@ -67,7 +67,7 @@
         - name: Build IPA (unsigned)
           run: flutter build ipa --no-codesign
 
-        - name: Debug: list build output
+        - name: Debug - list build output
           run: |
             echo "Listing build/ios and build/ios/ipa for debugging..."
             ls -la build/ios || true
