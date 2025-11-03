@@ -65,17 +65,33 @@
           run: flutter pub upgrade
 
         - name: Build IPA (unsigned)
-          # --no-codesign erzeugt ein unsigned ipa; für signierte Builds müssen Zertifikate/Provisioning bereitgestellt werden
           run: flutter build ipa --no-codesign
+
+        - name:
+            Debug: list build output
+          run: |
+            echo "Listing build/ios and build/ios/ipa for debugging..."
+            ls -la build/ios || true
+            ls -la build/ios/ipa || true
+
+        - name: Fail if no IPA produced
+          run: |
+            IPA=$(ls build/ios/ipa/*.ipa 2>/dev/null || true)
+            if [ -z "$IPA" ]; then
+              echo "❌ No .ipa found in \`build/ios/ipa/\` - failing the job to avoid downstream errors."
+              exit 1
+            fi
+            echo "✅ Found IPA: $IPA"
 
         - name: Upload iOS IPA
           uses: actions/upload-artifact@v4
           with:
             name: ios-ipa
             path: build/ios/ipa/*.ipa
+            if-no-files-found: 'error'
 
     create-release:
-      needs: [build-android, build-ios]
+      needs: [ build-android, build-ios ]
       runs-on: ubuntu-latest
       steps:
         - name: Checkout repository
