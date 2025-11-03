@@ -61,32 +61,53 @@
           with:
             channel: 'stable'
 
-        - name: Upgrade dependencies
-          run: flutter pub upgrade
+        - name: Install CocoaPods (falls nötig) & deps
+          run: |
+            flutter pub get
+            cd ios
+            pod install --repo-update || true
+            cd ..
 
         - name: Build IPA (unsigned)
           run: flutter build ipa --no-codesign
 
         - name: Debug - list build output
           run: |
-            echo "Listing build/ios and build/ios/ipa for debugging..."
+            echo "Listing build/ios..."
             ls -la build/ios || true
-            ls -la build/ios/ipa || true
+            find build/ios -type f -maxdepth 6 -print || true
 
-        - name: Fail if no IPA produced
+        - name: Collect iOS artifact (ipa / xcarchive / app)
           run: |
-            IPA=$(ls build/ios/ipa/*.ipa 2>/dev/null || true)
-            if [ -z "$IPA" ]; then
-              echo "❌ No .ipa found in \`build/ios/ipa/\` - failing the job to avoid downstream errors."
+            mkdir -p artifacts/ios
+            IPA=$(find build/ios -type f -name '*.ipa' -print -quit || true)
+            XCARCHIVE=$(find build/ios -type d -name '*.xcarchive' -print -quit || true)
+            APP=$(find build/ios -type d -name '*.app' -print -quit || true)
+
+            if [ -n "$IPA" ]; then
+              echo "Found ipa: $IPA"
+              cp "$IPA" artifacts/ios/
+            elif [ -n "$XCARCHIVE" ]; then
+              echo "Found xcarchive: $XCARCHIVE - zipping..."
+              ZIP=artifacts/ios/ios-archive.zip
+              (cd "$(dirname "$XCARCHIVE")" && zip -r "$GITHUB_WORKSPACE/$ZIP" "$(basename "$XCARCHIVE")")
+            elif [ -n "$APP" ]; then
+              echo "Found .app: $APP - zipping..."
+              mkdir -p tmp_payload
+              BASENAME=$(basename "$APP")
+              cp -R "$APP" tmp_payload/
+              (cd tmp_payload && zip -r "$GITHUB_WORKSPACE/artifacts/ios/ios-app.zip" "$BASENAME")
+              rm -rf tmp_payload
+            else
+              echo "❌ Keine ipa / xcarchive / .app unter \`build/ios/\` gefunden."
               exit 1
             fi
-            echo "✅ Found IPA: $IPA"
 
-        - name: Upload iOS IPA
+        - name: Upload iOS artifacts
           uses: actions/upload-artifact@v4
           with:
             name: ios-ipa
-            path: build/ios/ipa/*.ipa
+            path: artifacts/ios/**
             if-no-files-found: 'error'
 
     create-release:
