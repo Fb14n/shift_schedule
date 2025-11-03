@@ -149,6 +149,6 @@
             tag_name: ${{ env.new_tag }}
             files: |
               artifacts/android/app-release.apk
-              artifacts/ios/*.ipa
+              artifacts/ios/**
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
