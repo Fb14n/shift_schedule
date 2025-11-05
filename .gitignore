@@ -123,3 +123,4 @@ app.*.symbols
 .metadata
 node_modules
 assets/tables
+docs
