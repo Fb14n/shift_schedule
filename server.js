@@ -36,7 +36,9 @@ pool.connect()
 // -------------------------
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 
-// Seed-SQL-Datei lesen
+// -------------------------
+// Seed-SQL-Datei lesen & ausführen (bei Start)
+// -------------------------
 async function runSeed() {
   const seedFile = './assets/db/seed.sql';
   try {
@@ -65,13 +67,32 @@ async function runSeed() {
   }
 }
 
-// ---- DB Init ----
+// ---- DB Init (sichere Defaults für Tabellen falls nötig) ----
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
+      first_name TEXT,
+      last_name TEXT,
+      employee_id TEXT UNIQUE,
+      password TEXT NOT NULL,
+      company_id INTEGER
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS companies (
+      id SERIAL PRIMARY KEY,
       name TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
+      address TEXT
+    );
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS shift_types (
+      id SERIAL PRIMARY KEY,
+      type_name TEXT NOT NULL,
+      type_color INTEGER,
+      type_time_start TEXT,
+      type_time_end TEXT
     );
   `);
   await pool.query(`
@@ -79,14 +100,14 @@ async function initDB() {
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id),
       shift_date DATE NOT NULL,
-      shift_type TEXT NOT NULL,
+      shift_type_id INTEGER REFERENCES shift_types(id),
       name TEXT NOT NULL
     );
   `);
 }
 initDB().catch(console.error);
 
-// ---- Middleware ----
+// ---- Middleware: Auth ----
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -102,34 +123,16 @@ function authenticateToken(req, res, next) {
 // --- HILFSFUNKTION ---
 function toHexColor(colorValue) {
     if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
-        return colorValue; // Ist bereits ein Hex-String
+        return colorValue;
     }
+    if (colorValue === null || colorValue === undefined) return '#000000';
     const hex = Number(colorValue).toString(16).padStart(6, '0');
     return `#${hex.toUpperCase()}`;
 }
 
-// ---- Routes ----
-app.get("/shifts", authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const result = await pool.query(
-        'SELECT s.id, s.shift_date, st.type_name, st.type_color, st.type_time_start, st.type_time_end FROM shifts s JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1',
-        [userId]
-    );
-
-    const shiftsWithHexColor = result.rows.map(shift => ({
-        ...shift,
-        type_color: toHexColor(shift.type_color)
-    }));
-
-    res.json(shiftsWithHexColor);
-
-  } catch (err) {
-    console.error("Shifts error:", err.stack);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
+// -------------------------
+// Shift-type Routes
+// -------------------------
 app.get("/shift-types", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, type_name, type_color, type_time_start, type_time_end FROM shift_types ORDER BY id');
@@ -183,11 +186,105 @@ app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
   }
 });
 
+// -------------------------
+// Shift Routes
+// -------------------------
+app.get("/shifts", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const result = await pool.query(
+        'SELECT s.id, s.shift_date, st.type_name, st.type_color, st.type_time_start, st.type_time_end, s.name, s.user_id FROM shifts s LEFT JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1 ORDER BY s.shift_date',
+        [userId]
+    );
+
+    const shiftsWithHexColor = result.rows.map(shift => ({
+        ...shift,
+        type_color: toHexColor(shift.type_color)
+    }));
+
+    res.json(shiftsWithHexColor);
+
+  } catch (err) {
+    console.error("Shifts error:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Alle Schichten (Admin/Übersicht)
+app.get("/shifts/all", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT s.id, s.shift_date, s.name, s.user_id, u.first_name, u.last_name,
+              st.type_name, st.type_color, st.type_time_start, st.type_time_end
+       FROM shifts s
+       LEFT JOIN users u ON s.user_id = u.id
+       LEFT JOIN shift_types st ON s.shift_type_id = st.id
+       ORDER BY s.shift_date`
+    );
+
+    const rows = result.rows.map(r => ({ ...r, type_color: toHexColor(r.type_color) }));
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching all shifts:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/shifts", authenticateToken, async (req, res) => {
+  const { user_id, shift_date, shift_type_id, name } = req.body;
+  if (!user_id || !shift_date || !shift_type_id || !name) {
+    return res.status(400).json({ error: "user_id, shift_date, shift_type_id and name are required" });
+  }
+  try {
+    const result = await pool.query(
+      'INSERT INTO shifts (user_id, shift_date, shift_type_id, name) VALUES ($1, $2, $3, $4) RETURNING *',
+      [user_id, shift_date, shift_type_id, name]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Error creating shift:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/shifts/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  const fields = [];
+  const values = [];
+  let idx = 1;
+
+  for (const key of ['user_id', 'shift_date', 'shift_type_id', 'name']) {
+    if (updates[key] !== undefined) {
+      fields.push(`${key} = $${idx}`);
+      values.push(updates[key]);
+      idx++;
+    }
+  }
+
+  if (fields.length === 0) return res.status(400).json({ error: "No valid fields to update" });
+
+  try {
+    const result = await pool.query(
+      `UPDATE shifts SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      [...values, id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: "Shift not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error updating shift:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// -------------------------
+// User Routes
+// -------------------------
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
   try {
     const hashed = await bcrypt.hash(password, 10);
-    await pool.query("INSERT INTO users (name, password) VALUES ($1, $2)", [
+    await pool.query("INSERT INTO users (first_name, password) VALUES ($1, $2)", [
       username,
       hashed,
     ]);
@@ -233,29 +330,23 @@ app.post("/login", async (req, res) => {
 app.post("/reset-password", async (req, res) => {
   const { username, employeeId, newPassword } = req.body;
 
-  // Validierung der Eingabe
   if (!username || !employeeId || !newPassword) {
     return res.status(400).json({ error: "Username, employee ID, and new password are required." });
   }
 
   try {
-    // Finde den Benutzer basierend auf Vorname UND Personalnummer
     const userResult = await pool.query(
       "SELECT id FROM users WHERE first_name = $1 AND employee_id = $2",
       [username, employeeId]
     );
 
     if (userResult.rows.length === 0) {
-      // Wenn kein Benutzer gefunden wird, ist die Identifizierung fehlgeschlagen.
       return res.status(404).json({ error: "User not found or employee ID is incorrect." });
     }
 
     const userId = userResult.rows[0].id;
-
-    // Hashe das neue Passwort
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
-    // Aktualisiere das Passwort in der Datenbank
     await pool.query(
       "UPDATE users SET password = $1 WHERE id = $2",
       [hashedNewPassword, userId]
@@ -301,6 +392,133 @@ app.get("/user/details", authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error("Error fetching user details:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/users", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, first_name, last_name, employee_id, company_id FROM users ORDER BY id');
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching users:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/users", authenticateToken, async (req, res) => {
+  const { first_name, last_name, employee_id, password, company_id } = req.body;
+  if (!first_name || !last_name || !employee_id || !password) {
+    return res.status(400).json({ error: "first_name, last_name, employee_id and password are required" });
+  }
+  try {
+    const hashed = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (first_name, last_name, employee_id, password, company_id) VALUES ($1,$2,$3,$4,$5) RETURNING id, first_name, last_name, employee_id, company_id',
+      [first_name, last_name, employee_id, hashed, company_id || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(400).json({ error: "User with this employee_id already exists" });
+    }
+    console.error("Error creating user:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/users/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  const fields = [];
+  const values = [];
+  let idx = 1;
+
+  if (updates.password) {
+    updates.password = await bcrypt.hash(updates.password, 10);
+  }
+
+  for (const key of ['first_name', 'last_name', 'employee_id', 'company_id', 'password']) {
+    if (updates[key] !== undefined) {
+      fields.push(`${key} = $${idx}`);
+      values.push(updates[key]);
+      idx++;
+    }
+  }
+
+  if (fields.length === 0) return res.status(400).json({ error: "No valid fields to update" });
+
+  try {
+    const result = await pool.query(
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, first_name, last_name, employee_id, company_id`,
+      [...values, id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: "User not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error updating user:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// -------------------------
+// Company Routes
+// -------------------------
+app.get("/companies", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, name, address FROM companies ORDER BY id');
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching companies:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/companies", authenticateToken, async (req, res) => {
+  const { name, address } = req.body;
+  if (!name) return res.status(400).json({ error: "name is required" });
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO companies (name, address) VALUES ($1,$2) RETURNING *',
+      [name, address || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    if (err.code === "23505") {
+      return res.status(400).json({ error: "Company already exists" });
+    }
+    console.error("Error creating company:", err.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/companies/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+  const fields = [];
+  const values = [];
+  let idx = 1;
+
+  for (const key of ['name', 'address']) {
+    if (updates[key] !== undefined) {
+      fields.push(`${key} = $${idx}`);
+      values.push(updates[key]);
+      idx++;
+    }
+  }
+
+  if (fields.length === 0) return res.status(400).json({ error: "No valid fields to update" });
+
+  try {
+    const result = await pool.query(
+      `UPDATE companies SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+      [...values, id]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: "Company not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error updating company:", err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 });

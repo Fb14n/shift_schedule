@@ -13,84 +13,9 @@ class ApiService {
   static const String _keyRefresh = 'refresh_token';
   static const String _keyExpiry = 'token_expiry';
 
-  Future<List<Map<String, dynamic>>> fetchShifts(String token) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/shifts'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
-    } else {
-      throw Exception('Failed to load shifts');
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> fetchShiftsStored() async {
-    final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
-    return fetchShifts(token);
-  }
-
-  Future<List<Map<String, dynamic>>> getShiftTypes() async {
-    final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/shift-types'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
-    } else {
-      log('Fehler beim Abrufen der Schichttypen: ${response.statusCode}', name: 'ApiService');
-      throw Exception('Fehler beim Laden der Schichttypen');
-    }
-  }
-
-  Future<Map<String, dynamic>> updateShiftTypeColor(int id, String newColor) async {
-    final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
-
-    if (!newColor.startsWith('#') || newColor.length != 7) {
-      throw Exception('Ungültiges Farbformat. Benutze #RRGGBB.');
-    }
-
-    final response = await http.put(
-      Uri.parse('$baseUrl/shift-types/$id/color'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({'color': newColor}),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      log('Fehler beim Aktualisieren der Schichtfarbe: ${response.statusCode}', name: 'ApiService');
-      throw Exception('Fehler beim Aktualisieren der Schichtfarbe');
-    }
-  }
-
-  Future<Map<String, dynamic>> fetchUserDetails() async {
-    final token = await getToken();
-    if (token == null) throw Exception('No token stored');
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/user/details'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      log('User details fetched', name: 'ApiService');
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to fetch user details: ${response.statusCode} ${response.body}');
-    }
-  }
-
+  // -----------------------
+  // Auth / Token Handling
+  // -----------------------
   Future<String> login(String username, String password) async {
     log('API-Base-Url: ${dotenv.env['BASE_URL']}', name: 'ApiService');
     final response = await http.post(
@@ -104,7 +29,11 @@ class ApiService {
       final access = data['access_token'] as String?;
       final refresh = data['refresh_token'] as String?;
       if (access != null) {
-        await _saveTokenData(access, refreshToken: refresh, fallbackExpiryHours: 2);
+        await _saveTokenData(
+          access,
+          refreshToken: refresh,
+          fallbackExpiryHours: 2,
+        );
         log('Login successful, token saved', name: 'ApiService');
         return access;
       } else {
@@ -112,8 +41,35 @@ class ApiService {
       }
     } else {
       final errorResponse = json.decode(response.body);
-      throw Exception('Login failed: ${errorResponse['error'] ?? 'Unknown error'}');
+      throw Exception(
+        'Login failed: ${errorResponse['error'] ?? 'Unknown error'}',
+      );
     }
+  }
+
+  Future<void> logout() async {
+    try {
+      await storage.delete(key: _keyJwt);
+      await storage.delete(key: _keyRefresh);
+      await storage.delete(key: _keyExpiry);
+      log('Logout successful: credentials cleared', name: 'ApiService');
+    } catch (e) {
+      log('Logout failed: $e', name: 'ApiService');
+      throw Exception('Logout failed: $e');
+    }
+  }
+
+  Future<void> saveToken(String token) async {
+    await _saveTokenData(token, fallbackExpiryHours: 2);
+    log('Token saved', name: 'ApiService');
+  }
+
+  Future<String?> readRawToken() async {
+    return await storage.read(key: _keyJwt);
+  }
+
+  Future<void> deleteToken() async {
+    await storage.delete(key: _keyJwt);
   }
 
   Future<String?> getToken() async {
@@ -148,7 +104,11 @@ class ApiService {
         final newAccess = data['access_token'] as String?;
         final newRefresh = data['refresh_token'] as String?;
         if (newAccess != null) {
-          await _saveTokenData(newAccess, refreshToken: newRefresh, fallbackExpiryHours: 2);
+          await _saveTokenData(
+            newAccess,
+            refreshToken: newRefresh,
+            fallbackExpiryHours: 2,
+          );
           log('Token refreshed successfully', name: 'ApiService');
           return newAccess;
         }
@@ -163,13 +123,19 @@ class ApiService {
     return null;
   }
 
-  Future<void> _saveTokenData(String accessToken, {String? refreshToken, int? fallbackExpiryHours}) async {
+  Future<void> _saveTokenData(
+    String accessToken, {
+    String? refreshToken,
+    int? fallbackExpiryHours,
+  }) async {
     await storage.write(key: _keyJwt, value: accessToken);
     if (refreshToken != null) {
       await storage.write(key: _keyRefresh, value: refreshToken);
     }
 
-    final expiry = _parseJwtExpiry(accessToken) ?? DateTime.now().add(Duration(hours: fallbackExpiryHours ?? 2));
+    final expiry =
+        _parseJwtExpiry(accessToken) ??
+        DateTime.now().add(Duration(hours: fallbackExpiryHours ?? 2));
     await storage.write(key: _keyExpiry, value: expiry.toIso8601String());
   }
 
@@ -184,11 +150,17 @@ class ApiService {
       if (map.containsKey('exp')) {
         final exp = map['exp'];
         if (exp is int) {
-          return DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true).toLocal();
+          return DateTime.fromMillisecondsSinceEpoch(
+            exp * 1000,
+            isUtc: true,
+          ).toLocal();
         } else if (exp is String) {
           final seconds = int.tryParse(exp);
           if (seconds != null) {
-            return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true).toLocal();
+            return DateTime.fromMillisecondsSinceEpoch(
+              seconds * 1000,
+              isUtc: true,
+            ).toLocal();
           }
         }
       }
@@ -196,30 +168,312 @@ class ApiService {
     return null;
   }
 
-  Future<void> logout() async {
-    try {
-      await storage.delete(key: _keyJwt);
-      await storage.delete(key: _keyRefresh);
-      await storage.delete(key: _keyExpiry);
-      log('Logout successful: credentials cleared', name: 'ApiService');
-    } catch (e) {
-      log('Logout failed: $e', name: 'ApiService');
-      throw Exception('Logout failed: $e');
+  // -----------------------
+  // Fetch read-only resources
+  // -----------------------
+  Future<List<Map<String, dynamic>>> fetchShifts(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/shifts'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load shifts');
     }
   }
 
-  Future<void> saveToken(String token) async {
-    await _saveTokenData(token, fallbackExpiryHours: 2);
-    log('Token saved', name: 'ApiService');
-  }
-  Future<String?> readRawToken() async {
-    return await storage.read(key: _keyJwt);
+  Future<List<Map<String, dynamic>>> fetchShiftsStored() async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+    return fetchShifts(token);
   }
 
-  Future<void> deleteToken() async {
-    await storage.delete(key: _keyJwt);
+  Future<List<Map<String, dynamic>>> fetchAllShifts() async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/shifts/all'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw Exception('Fehler beim Laden aller Schichten');
+    }
   }
 
+  Future<List<Map<String, dynamic>>> getShiftTypes() async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/shift-types'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      log(
+        'Fehler beim Abrufen der Schichttypen: ${response.statusCode}',
+        name: 'ApiService',
+      );
+      throw Exception('Fehler beim Laden der Schichttypen');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchUserDetails() async {
+    final token = await getToken();
+    if (token == null) throw Exception('No token stored');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/user/details'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      log('User details fetched', name: 'ApiService');
+      return jsonDecode(response.body);
+    } else {
+      throw Exception(
+        'Failed to fetch user details: ${response.statusCode} ${response.body}',
+      );
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchUsers() async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/users'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw Exception('Fehler beim Laden der Benutzer');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCompanies() async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/companies'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw Exception('Fehler beim Laden der Firmen');
+    }
+  }
+
+  // -----------------------
+  // Create / Update resources
+  // -----------------------
+  Future<Map<String, dynamic>> createUser({
+    required String firstName,
+    required String lastName,
+    required String employeeId,
+    required String password,
+    int? companyId,
+  }) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final body = {
+      'first_name': firstName,
+      'last_name': lastName,
+      'employee_id': employeeId,
+      'password': password,
+      if (companyId != null) 'company_id': companyId,
+    };
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/users'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Erstellen des Benutzers: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateUser(
+    int id,
+    Map<String, dynamic> updates,
+  ) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(updates),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception(
+        'Fehler beim Aktualisieren des Benutzers: ${response.body}',
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> createCompany({
+    required String name,
+    String? address,
+  }) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/companies'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'name': name, if (address != null) 'address': address}),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Erstellen der Firma: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateCompany(
+    int id,
+    Map<String, dynamic> updates,
+  ) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/companies/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(updates),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Aktualisieren der Firma: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createShift({
+    required int userId,
+    required String shiftDate, // ISO yyyy-mm-dd
+    required int shiftTypeId,
+    required String name,
+  }) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/shifts'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'user_id': userId,
+        'shift_date': shiftDate,
+        'shift_type_id': shiftTypeId,
+        'name': name,
+      }),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Erstellen der Schicht: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateShift(
+    int id,
+    Map<String, dynamic> updates,
+  ) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/shifts/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(updates),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception(
+        'Fehler beim Aktualisieren der Schicht: ${response.body}',
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> updateShiftTypeColor(
+    int id,
+    String newColor,
+  ) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+
+    if (!newColor.startsWith('#') || newColor.length != 7) {
+      throw Exception('Ungültiges Farbformat. Benutze #RRGGBB.');
+    }
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/shift-types/$id/color'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'color': newColor}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      log(
+        'Fehler beim Aktualisieren der Schichtfarbe: ${response.statusCode}',
+        name: 'ApiService',
+      );
+      throw Exception('Fehler beim Aktualisieren der Schichtfarbe');
+    }
+  }
+
+  // -----------------------
+  // Utility / Admin
+  // -----------------------
   Future<void> resetPassword({
     required String username,
     required String employeeId,
@@ -239,7 +493,10 @@ class ApiService {
       return;
     } else {
       final errorData = jsonDecode(response.body);
-      throw Exception(errorData['error'] ?? 'Unbekannter Fehler beim Zurücksetzen des Passworts.');
+      throw Exception(
+        errorData['error'] ??
+            'Unbekannter Fehler beim Zurücksetzen des Passworts.',
+      );
     }
   }
 }
