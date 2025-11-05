@@ -307,8 +307,8 @@ app.post("/reset-password", async (req, res) => {
 app.get("/user/details", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const userResult = await pool.query("SELECT first_name, last_name, employee_id, vacation_days, is_admin FROM users WHERE id = $1", [userId]);
-    const vacationResult = await pool.query("SELECT COUNT(*) AS vacation_days FROM shifts WHERE user_id = $1 AND shift_type_id = 5", [userId]);
+    const userResult = await pool.query("SELECT first_name, last_name, employee_id, holidays, is_admin FROM users WHERE id = $1", [userId]);
+    const vacationResult = await pool.query("SELECT COUNT(*) AS holidays FROM shifts WHERE user_id = $1 AND shift_type_id = 5", [userId]);
     const sickResult = await pool.query("SELECT COUNT(*) AS sick_days FROM shifts WHERE user_id = $1 AND shift_type_id = 4", [userId]);
     if (userResult.rows.length === 0) return res.status(404).json({ error: "User not found" });
     res.json({
@@ -328,7 +328,7 @@ app.get("/user/details", authenticateToken, async (req, res) => {
 
 app.get("/users", authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, first_name, last_name, employee_id, company_id, vacation_days, is_admin FROM users ORDER BY id');
+    const result = await pool.query('SELECT id, first_name, last_name, employee_id, company_id, holidays, is_admin FROM users ORDER BY id');
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching users:", err.stack);
@@ -344,7 +344,7 @@ app.post("/users", authenticateToken, async (req, res) => {
   try {
     const hashed = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO users (first_name, last_name, password, employee_id, company_id, vacation_days, is_admin) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, first_name, last_name, employee_id, company_id, vacation_days, is_admin',
+      'INSERT INTO users (first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, first_name, last_name, employee_id, company_id, vacation_days, is_admin',
       [first_name, last_name, hashed, employee_id, company_id || null, vacation_days || 0, is_admin || false]
     );
     res.status(201).json(result.rows[0]);
@@ -378,7 +378,7 @@ app.put("/users/:id", authenticateToken, async (req, res) => {
 
   try {
     const result = await pool.query(
-      `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, first_name, last_name, employee_id, company_id, vacation_days, is_admin`,
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, first_name, last_name, employee_id, company_id, holidays, is_admin`,
       [...values, id]
     );
     if (result.rowCount === 0) return res.status(404).json({ error: "User not found" });
