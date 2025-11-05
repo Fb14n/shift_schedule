@@ -111,23 +111,46 @@ initDB().catch(console.error);
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-  if (!token) return res.sendStatus(401);
+  if (!token) return res.status(401).json({ error: "Token missing" });
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-      if (err) return res.sendStatus(403);
-      req.user = user;
-      next();
-    });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    // decoded sollte ein Objekt mit userId sein
+    if (!decoded || typeof decoded !== "object" || !('userId' in decoded)) {
+      console.error("Invalid token payload:", decoded);
+      return res.status(401).json({ error: "Invalid token payload" });
+    }
+    req.user = decoded;
+    next();
+  } catch (err) {
+    console.error("JWT verify error:", err);
+    return res.status(403).json({ error: "Invalid token" });
+  }
+}
+
+// ---- Hilfsfunktion: toHexColor (robuster) ----
+function toHexColor(colorValue) {
+  if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
+      return colorValue;
+  }
+  if (colorValue === null || colorValue === undefined) return '#000000';
+
+  // akzeptiere numerische Werte, Strings mit Zahlen oder BigInt
+  const n = Number(colorValue);
+  if (!Number.isFinite(n) || isNaN(n)) {
+    // fallback: wenn es ein Buffer/Objekt ist -> fallback color
+    try {
+      const asInt = parseInt(String(colorValue), 10);
+      if (Number.isFinite(asInt) && !isNaN(asInt)) {
+        const hex = asInt.toString(16).padStart(6, '0');
+        return `#${hex.toUpperCase()}`;
+      }
+    } catch (_) {}
+    return '#000000';
   }
 
-// --- HILFSFUNKTION ---
-function toHexColor(colorValue) {
-    if (typeof colorValue === 'string' && colorValue.startsWith('#')) {
-        return colorValue;
-    }
-    if (colorValue === null || colorValue === undefined) return '#000000';
-    const hex = Number(colorValue).toString(16).padStart(6, '0');
-    return `#${hex.toUpperCase()}`;
+  const hex = Math.trunc(n).toString(16).padStart(6, '0');
+  return `#${hex.toUpperCase()}`;
 }
 
 // -------------------------
@@ -191,10 +214,19 @@ app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
 // -------------------------
 app.get("/shifts", authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user && req.user.userId;
+    if (!userId) {
+      console.warn("GET /shifts called without userId in token payload", { tokenPayload: req.user });
+      return res.status(401).json({ error: "userId missing in token" });
+    }
+
     const result = await pool.query(
-        'SELECT s.id, s.shift_date, st.type_name, st.type_color, st.type_time_start, st.type_time_end, s.name, s.user_id FROM shifts s LEFT JOIN shift_types st ON s.shift_type_id = st.id WHERE s.user_id = $1 ORDER BY s.shift_date',
-        [userId]
+      `SELECT s.id, s.shift_date, st.type_name, st.type_color, st.type_time_start, st.type_time_end, s.name, s.user_id
+       FROM shifts s
+       LEFT JOIN shift_types st ON s.shift_type_id = st.id
+       WHERE s.user_id = $1
+       ORDER BY s.shift_date`,
+      [userId]
     );
 
     const shiftsWithHexColor = result.rows.map(shift => ({
@@ -205,7 +237,8 @@ app.get("/shifts", authenticateToken, async (req, res) => {
     res.json(shiftsWithHexColor);
 
   } catch (err) {
-    console.error("Shifts error:", err.stack);
+    // vollständigen Stack ausgeben für Debugging
+    console.error("Shifts error:", err.stack || err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -1,3 +1,4 @@
+// language: dart
 import 'dart:convert';
 import 'dart:developer';
 
@@ -19,7 +20,7 @@ class ApiService {
   Future<String> login(String username, String password) async {
     log('API-Base-Url: ${dotenv.env['BASE_URL']}', name: 'ApiService');
     final response = await http.post(
-      Uri.parse('$baseUrl/login'),
+      Uri.parse('${baseUrl ?? ''}/login'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'username': username, 'password': password}),
     );
@@ -40,7 +41,8 @@ class ApiService {
         throw Exception('Login failed: Token not found in response');
       }
     } else {
-      final errorResponse = json.decode(response.body);
+      final errorResponse =
+      response.body.isNotEmpty ? json.decode(response.body) : {};
       throw Exception(
         'Login failed: ${errorResponse['error'] ?? 'Unknown error'}',
       );
@@ -94,7 +96,7 @@ class ApiService {
 
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/refresh'),
+        Uri.parse('${baseUrl ?? ''}/refresh'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'refresh_token': refresh}),
       );
@@ -113,7 +115,8 @@ class ApiService {
           return newAccess;
         }
       } else {
-        log('Refresh failed: ${response.statusCode}', name: 'ApiService');
+        log('Refresh failed: ${response.statusCode} ${response.body}',
+            name: 'ApiService');
       }
     } catch (e) {
       log('Refresh exception: $e', name: 'ApiService');
@@ -124,10 +127,10 @@ class ApiService {
   }
 
   Future<void> _saveTokenData(
-    String accessToken, {
-    String? refreshToken,
-    int? fallbackExpiryHours,
-  }) async {
+      String accessToken, {
+        String? refreshToken,
+        int? fallbackExpiryHours,
+      }) async {
     await storage.write(key: _keyJwt, value: accessToken);
     if (refreshToken != null) {
       await storage.write(key: _keyRefresh, value: refreshToken);
@@ -135,7 +138,7 @@ class ApiService {
 
     final expiry =
         _parseJwtExpiry(accessToken) ??
-        DateTime.now().add(Duration(hours: fallbackExpiryHours ?? 2));
+            DateTime.now().add(Duration(hours: fallbackExpiryHours ?? 2));
     await storage.write(key: _keyExpiry, value: expiry.toIso8601String());
   }
 
@@ -149,19 +152,21 @@ class ApiService {
       final map = jsonDecode(decoded) as Map<String, dynamic>;
       if (map.containsKey('exp')) {
         final exp = map['exp'];
+        int? seconds;
         if (exp is int) {
+          seconds = exp;
+        } else if (exp is double) {
+          seconds = exp.toInt();
+        } else if (exp is String) {
+          seconds = int.tryParse(exp);
+        } else if (exp is num) {
+          seconds = exp.toInt();
+        }
+        if (seconds != null) {
           return DateTime.fromMillisecondsSinceEpoch(
-            exp * 1000,
+            seconds * 1000,
             isUtc: true,
           ).toLocal();
-        } else if (exp is String) {
-          final seconds = int.tryParse(exp);
-          if (seconds != null) {
-            return DateTime.fromMillisecondsSinceEpoch(
-              seconds * 1000,
-              isUtc: true,
-            ).toLocal();
-          }
         }
       }
     } catch (_) {}
@@ -171,23 +176,38 @@ class ApiService {
   // -----------------------
   // Fetch read-only resources
   // -----------------------
-  Future<List<Map<String, dynamic>>> fetchShifts(String token) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/shifts'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+  /// Falls `token` null ist, wird versucht, das gespeicherte Token zu verwenden.
+  Future<List<Map<String, dynamic>>> fetchShifts([String? token]) async {
+    final usedToken = token ?? await getToken();
+    if (usedToken == null) throw Exception('Kein Token gefunden');
 
-    if (response.statusCode == 200) {
-      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
-    } else {
-      throw Exception('Failed to load shifts');
+    if (baseUrl == null || baseUrl!.isEmpty) {
+      throw Exception('BASE_URL nicht konfiguriert');
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/shifts'),
+        headers: {'Authorization': 'Bearer $usedToken'},
+      );
+
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      } else {
+        final bodySnippet = response.body.length > 500
+            ? '${response.body.substring(0, 500)}...'
+            : response.body;
+        throw Exception(
+            'Failed to load shifts: ${response.statusCode} ${bodySnippet}');
+      }
+    } catch (e) {
+      log('fetchShifts error: $e', name: 'ApiService');
+      rethrow;
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchShiftsStored() async {
-    final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
-    return fetchShifts(token);
+    return fetchShifts();
   }
 
   Future<List<Map<String, dynamic>>> fetchAllShifts() async {
@@ -315,9 +335,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> updateUser(
-    int id,
-    Map<String, dynamic> updates,
-  ) async {
+      int id,
+      Map<String, dynamic> updates,
+      ) async {
     final token = await getToken();
     if (token == null) throw Exception('Kein Token gefunden');
 
@@ -363,9 +383,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> updateCompany(
-    int id,
-    Map<String, dynamic> updates,
-  ) async {
+      int id,
+      Map<String, dynamic> updates,
+      ) async {
     final token = await getToken();
     if (token == null) throw Exception('Kein Token gefunden');
 
@@ -416,9 +436,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> updateShift(
-    int id,
-    Map<String, dynamic> updates,
-  ) async {
+      int id,
+      Map<String, dynamic> updates,
+      ) async {
     final token = await getToken();
     if (token == null) throw Exception('Kein Token gefunden');
 
@@ -441,9 +461,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> updateShiftTypeColor(
-    int id,
-    String newColor,
-  ) async {
+      int id,
+      String newColor,
+      ) async {
     final token = await getToken();
     if (token == null) throw Exception('Kein Token gefunden');
 
@@ -492,7 +512,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return;
     } else {
-      final errorData = jsonDecode(response.body);
+      final errorData = response.body.isNotEmpty ? jsonDecode(response.body) : {};
       throw Exception(
         errorData['error'] ??
             'Unbekannter Fehler beim Zurücksetzen des Passworts.',
