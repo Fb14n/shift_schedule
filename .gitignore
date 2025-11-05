@@ -124,3 +124,7 @@ app.*.symbols
 node_modules
 assets/tables
 docs
+linux
+macos
+web
+windows
