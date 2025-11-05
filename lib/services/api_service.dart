@@ -116,8 +116,9 @@ class ApiService {
       if (map.containsKey('exp')) {
         final exp = map['exp'];
         int? seconds;
-        if (exp is int) seconds = exp;
-        else if (exp is double) seconds = exp.toInt();
+        if (exp is int) {
+          seconds = exp;
+        } else if (exp is double) seconds = exp.toInt();
         else if (exp is String) seconds = int.tryParse(exp);
         else if (exp is num) seconds = exp.toInt();
         if (seconds != null) return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true).toLocal();
@@ -177,20 +178,49 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> fetchShiftsForUser(int userId) async {
+    final token = await getToken();
+    if (token == null) throw Exception('Kein Token gefunden');
+    if (baseUrl == null || baseUrl!.isEmpty) throw Exception('BASE_URL nicht konfiguriert');
+
+    try {
+      final response = await http.get(
+          Uri.parse('$baseUrl/shifts/user/$userId'),
+          headers: {'Authorization': 'Bearer $token'}
+      );
+
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      } else {
+        final bodySnippet = response.body.length > 500 ? '${response.body.substring(0, 500)}...' : response.body;
+        throw Exception('Failed to load shifts for user $userId: ${response.statusCode} $bodySnippet');
+      }
+    } catch (e) {
+      log('fetchShiftsForUser error for user $userId: $e', name: 'ApiService');
+      rethrow;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> fetchUsers() async {
     final token = await getToken();
     if (token == null) throw Exception('Kein Token gefunden');
     final response = await http.get(Uri.parse('$baseUrl/users'), headers: {'Authorization': 'Bearer $token'});
-    if (response.statusCode == 200) return List<Map<String, dynamic>>.from(jsonDecode(response.body));
-    else throw Exception('Fehler beim Laden der Benutzer');
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw Exception('Fehler beim Laden der Benutzer');
+    }
   }
 
   Future<List<Map<String, dynamic>>> fetchCompanies() async {
     final token = await getToken();
     if (token == null) throw Exception('Kein Token gefunden');
     final response = await http.get(Uri.parse('$baseUrl/companies'), headers: {'Authorization': 'Bearer $token'});
-    if (response.statusCode == 200) return List<Map<String, dynamic>>.from(jsonDecode(response.body));
-    else throw Exception('Fehler beim Laden der Firmen');
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw Exception('Fehler beim Laden der Firmen');
+    }
   }
 
   Future<Map<String, dynamic>> createUser({
@@ -217,8 +247,11 @@ class ApiService {
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(body),
     );
-    if (response.statusCode == 201 || response.statusCode == 200) return jsonDecode(response.body);
-    else throw Exception('Fehler beim Erstellen des Benutzers: ${response.body}');
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Erstellen des Benutzers: ${response.body}');
+    }
   }
 
   Future<Map<String, dynamic>> updateUser(int id, Map<String, dynamic> updates) async {
@@ -228,8 +261,11 @@ class ApiService {
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(updates),
     );
-    if (response.statusCode == 200) return jsonDecode(response.body);
-    else throw Exception('Fehler beim Aktualisieren des Benutzers: ${response.body}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Aktualisieren des Benutzers: ${response.body}');
+    }
   }
 
   Future<Map<String, dynamic>> createCompany({ required String name, String? address }) async {
@@ -239,8 +275,11 @@ class ApiService {
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'name': name, if (address != null) 'address': address}),
     );
-    if (response.statusCode == 201 || response.statusCode == 200) return jsonDecode(response.body);
-    else throw Exception('Fehler beim Erstellen der Firma: ${response.body}');
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Erstellen der Firma: ${response.body}');
+    }
   }
 
   Future<Map<String, dynamic>> updateCompany(int id, Map<String, dynamic> updates) async {
@@ -250,11 +289,13 @@ class ApiService {
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(updates),
     );
-    if (response.statusCode == 200) return jsonDecode(response.body);
-    else throw Exception('Fehler beim Aktualisieren der Firma: ${response.body}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Aktualisieren der Firma: ${response.body}');
+    }
   }
 
-  // createShift: entfernt `name` (Seed hat kein name)
   Future<Map<String, dynamic>> createShift({
     required int userId,
     required String shiftDate, // ISO yyyy-mm-dd
@@ -270,8 +311,11 @@ class ApiService {
         'shift_type_id': shiftTypeId,
       }),
     );
-    if (response.statusCode == 201 || response.statusCode == 200) return jsonDecode(response.body);
-    else throw Exception('Fehler beim Erstellen der Schicht: ${response.body}');
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Erstellen der Schicht: ${response.body}');
+    }
   }
 
   Future<Map<String, dynamic>> updateShift(int id, Map<String, dynamic> updates) async {
@@ -281,8 +325,11 @@ class ApiService {
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(updates),
     );
-    if (response.statusCode == 200) return jsonDecode(response.body);
-    else throw Exception('Fehler beim Aktualisieren der Schicht: ${response.body}');
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Fehler beim Aktualisieren der Schicht: ${response.body}');
+    }
   }
 
   Future<Map<String, dynamic>> updateShiftTypeColor(int id, String newColor) async {

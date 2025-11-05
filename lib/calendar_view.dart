@@ -6,6 +6,7 @@ import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/day_cell.dart';
+import 'package:shift_schedule/ui/widgets/floating_action_button.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:shift_schedule/ui/widgets/day_detail_popup.dart';
 import 'package:shift_schedule/utils/get_color_contrast.dart';
@@ -39,7 +40,7 @@ class _CalendarViewState extends State<CalendarView> {
   void initState() {
     super.initState();
     _updateNavigationButtons();
-    _loadAllData();
+    _loadAllData(showLoadingScreen: true);
   }
 
   Future<void> _loadShiftColors() async {
@@ -84,20 +85,17 @@ class _CalendarViewState extends State<CalendarView> {
     }
   }
 
-  Future<void> _loadAllData() async {
-    if (mounted) {
+  Future<void> _loadAllData({bool showLoadingScreen = false}) async {
+    if (mounted && showLoadingScreen) {
       setState(() {
         _isLoading = true;
       });
     }
 
     try {
-      await Future.wait([
-        _loadShifts(),
-        _loadShiftColors(),
-      ]);
+      await Future.wait([_loadShifts(), _loadShiftColors()]);
     } finally {
-      if (mounted) {
+      if (mounted && _isLoading) {
         setState(() {
           _isLoading = false;
         });
@@ -133,7 +131,11 @@ class _CalendarViewState extends State<CalendarView> {
   }
 
   void _showDayPopup(DateTime selectedDay) {
-    final dayKey = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+    final dayKey = DateTime(
+      selectedDay.year,
+      selectedDay.month,
+      selectedDay.day,
+    );
     final List<Map<String, dynamic>> shiftsForDay = [];
 
     if (_shifts.containsKey(dayKey)) {
@@ -147,8 +149,8 @@ class _CalendarViewState extends State<CalendarView> {
       transitionDuration: const Duration(milliseconds: 280),
       pageBuilder: (context, anim1, anim2) {
         return Theme(
-            data: Theme.of(this.context),
-            child: DayDetailPopup(day: selectedDay, shifts: shiftsForDay),
+          data: Theme.of(this.context),
+          child: DayDetailPopup(day: selectedDay, shifts: shiftsForDay),
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -164,123 +166,114 @@ class _CalendarViewState extends State<CalendarView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary));
+      return const Center(
+        child: CircularProgressIndicator(color: CHRONOSTheme.secondary),
+      );
     }
-    final isCurrentMonth = _focusedDay.year == DateTime.now().year &&
+    final isCurrentMonth =
+        _focusedDay.year == DateTime.now().year &&
         _focusedDay.month == DateTime.now().month;
 
     return CustomScaffold(
+      floatingActionButton: CustomFloatingActionButton(
+        heroTag: 'todayButton',
+        tooltip: 'Zum aktuellen Monat springen',
+        icon: Symbols.today_rounded,
+        onPressed: () {
+          setState(() {
+            _focusedDay = DateTime.now();
+            _updateNavigationButtons();
+          });
+        },
+        visible: !isCurrentMonth,
+      ),
+      showEditButton: true,
+      onRefresh: _loadAllData,
       body: Padding(
         padding: const EdgeInsets.all(10),
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                TableCalendar(
-                  daysOfWeekHeight: 20,
-                  weekendDays: const [DateTime.saturday, DateTime.sunday],
-                  loadEventsForDisabledDays: true,
-                  rowHeight: MediaQuery.of(context).size.height * 0.6 / 5,
-                  locale: 'de_DE',
-                  startingDayOfWeek: StartingDayOfWeek.monday,
-                  firstDay: _firstDay,
-                  lastDay: _lastDay,
-                  focusedDay: _focusedDay,
-                  calendarFormat: _calendarFormat,
-                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                  onDaySelected: (selectedDay, focusedDay) {
-                    _showDayPopup(selectedDay);
-                    if (selectedDay.month == focusedDay.month) {
-                      if (!isSameDay(_selectedDay, selectedDay)) {
-                        setState(() {
-                          _selectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
-                        });
-                      }
-                    } else {
-                      setState(() {
-                        _selectedDay = null;
-                      });
-                    }
-                  },
-                  onPageChanged: (focusedDay) {
-                    setState(() {
-                      _focusedDay = focusedDay;
-                      _updateNavigationButtons();
-                    });
-                  },
-                  calendarBuilders: CalendarBuilders(
-                    defaultBuilder: (context, day, focusedDay) {
-                      final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
-                      final shiftType = shiftData?['type_name'] as String?;
-                      return Theme(
-                        data: Theme.of(this.context),
-                        child: DayCell(
-                          day: day,
-                          shiftColor: _shiftColors[shiftType],
-                          shift: shiftType,
-                          textColor: _shiftTextColors[shiftType],
-                        ),
-                      );
-                    },
-                    todayBuilder: (context, day, focusedDay) {
-                      final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
-                      final shiftType = shiftData?['type_name'] as String?;
-                      return Theme(
-                        data: Theme.of(this.context),
-                        child: DayCell(
-                          day: day,
-                          shiftColor: _shiftColors[shiftType],
-                          shift: shiftType,
-                          textColor: _shiftTextColors[shiftType],
-                        ),
-                      );
-                    },
-                    selectedBuilder: (context, day, focusedDay) {
-                      final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
-                      final shiftType = shiftData?['type_name'] as String?;
-                      return Theme(
-                        data: Theme.of(this.context),
-                        child: DayCell(
-                          day: day,
-                          shiftColor: _shiftColors[shiftType],
-                          shift: shiftType,
-                          textColor: _shiftTextColors[shiftType],
-                        ),
-                      );
-                    },
-                  ),
-                  headerStyle: HeaderStyle(
-                    leftChevronVisible: _isPrevEnabled,
-                    rightChevronVisible: _isNextEnabled,
-                    formatButtonVisible: false,
-                    titleCentered: true,
-                  ),
+        child: TableCalendar(
+          daysOfWeekHeight: 20,
+          weekendDays: const [DateTime.saturday, DateTime.sunday],
+          loadEventsForDisabledDays: true,
+          rowHeight: MediaQuery.of(context).size.height * 0.6 / 5,
+          locale: 'de_DE',
+          startingDayOfWeek: StartingDayOfWeek.monday,
+          firstDay: _firstDay,
+          lastDay: _lastDay,
+          focusedDay: _focusedDay,
+          calendarFormat: _calendarFormat,
+          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+          onDaySelected: (selectedDay, focusedDay) {
+            _showDayPopup(selectedDay);
+            if (selectedDay.month == focusedDay.month) {
+              if (!isSameDay(_selectedDay, selectedDay)) {
+                setState(() {
+                  _selectedDay = DateTime(
+                    selectedDay.year,
+                    selectedDay.month,
+                    selectedDay.day,
+                  );
+                });
+              }
+            } else {
+              setState(() {
+                _selectedDay = null;
+              });
+            }
+          },
+          onPageChanged: (focusedDay) {
+            setState(() {
+              _focusedDay = focusedDay;
+              _updateNavigationButtons();
+            });
+          },
+          calendarBuilders: CalendarBuilders(
+            defaultBuilder: (context, day, focusedDay) {
+              final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
+              final shiftType = shiftData?['type_name'] as String?;
+              return Theme(
+                data: Theme.of(this.context),
+                child: DayCell(
+                  day: day,
+                  shiftColor: _shiftColors[shiftType],
+                  shift: shiftType,
+                  textColor: _shiftTextColors[shiftType],
                 ),
-              ],
-            ),
-            Positioned(
-              bottom: 24,
-              right: 24,
-              child: Visibility(
-                visible: !isCurrentMonth,
-                child: FloatingActionButton(
-                  heroTag: 'todayButton',
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime.now();
-                      _updateNavigationButtons();
-                    });
-                  },
-                  tooltip: 'Zum aktuellen Monat springen',
-                  backgroundColor: CHRONOSTheme.primary,
-                  child: const Icon(
-                      Symbols.today_rounded,
-                      color: CHRONOSTheme.onPrimary
-                  ),
+              );
+            },
+            todayBuilder: (context, day, focusedDay) {
+              final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
+              final shiftType = shiftData?['type_name'] as String?;
+              return Theme(
+                data: Theme.of(this.context),
+                child: DayCell(
+                  day: day,
+                  shiftColor: _shiftColors[shiftType],
+                  shift: shiftType,
+                  textColor: _shiftTextColors[shiftType],
                 ),
-              ),
-            ),
-          ],
+              );
+            },
+            selectedBuilder: (context, day, focusedDay) {
+              final shiftData = _shifts[DateTime(day.year, day.month, day.day)];
+              final shiftType = shiftData?['type_name'] as String?;
+              return Theme(
+                data: Theme.of(this.context),
+                child: DayCell(
+                  day: day,
+                  shiftColor: _shiftColors[shiftType],
+                  shift: shiftType,
+                  textColor: _shiftTextColors[shiftType],
+                ),
+              );
+            },
+          ),
+          headerStyle: HeaderStyle(
+            leftChevronVisible: _isPrevEnabled,
+            rightChevronVisible: _isNextEnabled,
+            formatButtonVisible: false,
+            titleCentered: true,
+          ),
         ),
       ),
     );

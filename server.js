@@ -189,7 +189,33 @@ app.get("/shifts", authenticateToken, async (req, res) => {
   }
 });
 
-// Alle Schichten (Übersicht)
+app.get("/shifts/user/:userId", authenticateToken, async (req, res) => {
+  // Stelle sicher, dass der eingeloggte User ein Admin ist (Sicherheitsüberprüfung)
+  const requesterId = req.user.userId;
+  const adminCheck = await pool.query('SELECT is_admin FROM users WHERE id = $1', [requesterId]);
+  if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
+    return res.status(403).json({ error: "Forbidden: Not an admin" });
+  }
+
+  // Fahre fort, wenn der User ein Admin ist
+  const { userId } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT s.id, s.shift_date, st.type_name, st.type_color, st.type_time_start, st.type_time_end, s.user_id
+       FROM shifts s
+       LEFT JOIN shift_types st ON s.shift_type_id = st.id
+       WHERE s.user_id = $1
+       ORDER BY s.shift_date`,
+      [userId]
+    );
+    const shiftsWithHexColor = result.rows.map(shift => ({ ...shift, type_color: toHexColor(shift.type_color) }));
+    res.json(shiftsWithHexColor);
+  } catch (err) {
+    console.error(`Error fetching shifts for user ${userId}:`, err.stack || err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.get("/shifts/all", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(

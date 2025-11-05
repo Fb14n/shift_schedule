@@ -10,11 +10,18 @@ import 'package:flutter_svg/flutter_svg.dart';
 class CustomScaffold extends StatefulWidget {
   final Widget? body;
   final Widget? title;
+  final Future<void> Function()? onRefresh;
+  final bool showEditButton;
+  final Widget? floatingActionButton;
 
   const CustomScaffold({
     super.key,
     this.body,
     this.title,
+    this.onRefresh,
+    this.showEditButton = false,
+    this.floatingActionButton,
+
   });
 
   @override
@@ -35,7 +42,7 @@ class _CustomScaffoldState extends State<CustomScaffold> {
   Widget build(BuildContext context) {
     final String? currentRoute = GoRouterState.of(context).name;
     final bool canPop = context.canPop();
-    final themeMode = ThemeManager.themeModeNotifier.value;
+    //final themeMode = ThemeManager.themeModeNotifier.value;
     final String logoAsset = Theme.of(context).brightness == Brightness.light
         ? 'assets/logo/logo_vertical.svg'
         : 'assets/logo/logo_vertical_dark.svg';
@@ -66,6 +73,24 @@ class _CustomScaffoldState extends State<CustomScaffold> {
           //   ),
           //   onPressed: ThemeManager.toggleTheme,
           // ),
+          FutureBuilder<Map<String, dynamic>>(
+            future: _userDetailsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox.shrink();
+              }
+              final isAdmin = snapshot.hasData && snapshot.data?['is_admin'] == true;
+              if (!isAdmin) return const SizedBox.shrink();
+              if (!widget.showEditButton) return const SizedBox.shrink();
+              return IconButton(
+                tooltip: 'Editieren',
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  context.pushNamed('user_list');
+                },
+              );
+            },
+          ),
           if (currentRoute != 'settings')
             IconButton(
               icon: const Icon(Symbols.settings_rounded),
@@ -220,7 +245,38 @@ class _CustomScaffoldState extends State<CustomScaffold> {
           },
         ),
       ),
-      body: widget.body,
+      body: RefreshIndicator(
+        color: CHRONOSTheme.secondary,
+        backgroundColor: CHRONOSTheme.of(context).popUpBackground,
+        onRefresh: () async {
+          final List<Future> refreshFutures = [];
+          final userDetailsFuture = apiService.fetchUserDetails();
+          refreshFutures.add(userDetailsFuture);
+
+          setState(() {
+            _userDetailsFuture = userDetailsFuture;
+          });
+          if (widget.onRefresh != null) {
+            refreshFutures.add(widget.onRefresh!());
+          }
+          await Future.wait(refreshFutures);
+        },
+        child: widget.body is ScrollView
+            ? widget.body!
+            : SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: widget.body ?? const SizedBox.shrink(),
+        ),
+      ),
+      floatingActionButton: widget.floatingActionButton == null
+          ? null
+          :  Padding(
+        padding: const EdgeInsets.only(
+          right: 24,
+          bottom: 24,
+        ),
+        child: widget.floatingActionButton,
+      ),
     );
   }
 }
