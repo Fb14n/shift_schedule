@@ -1,6 +1,3 @@
-// Datei: `lib/routes/edit/user_list_page.dart` (Anpassungen für Unternehmensfilter)
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -134,7 +131,6 @@ class _UserListPageState extends State<UserListPage> {
             subtitle: Text('ID: $emp'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              log('Tapped user: $name', name: 'UserListPage');
               context.pushNamed('admin_calendar', extra: u);
             },
           );

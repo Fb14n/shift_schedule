@@ -1,3 +1,12 @@
+-richtige Id-Verteilung ind er DB
+-edit users
+-edit/add shift-types
+-edit/add companies 
+-edit multiple days at once
+
+
+
+
 # Shift Schedule - App zur Schichtplanung
 
 ![Build & Release Flutter](https://github.com/fabianberger/shift_schedule/actions/workflows/release.yml/badge.svg)

@@ -334,6 +334,24 @@ class ApiService {
     }
   }
 
+  Future<void> deleteShift(int id) async {
+    final token = await getToken();
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
+    if (baseUrl == null || baseUrl!.isEmpty) throw ExceptionToString('BASE_URL nicht konfiguriert');
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/shifts/$id'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      return;
+    } else {
+      final bodySnippet = response.body.length > 500 ? '${response.body.substring(0, 500)}...' : response.body;
+      throw ExceptionToString('Fehler beim Löschen der Schicht: ${response.statusCode} $bodySnippet');
+    }
+  }
+
   Future<Map<String, dynamic>> updateShift(int id, Map<String, dynamic> updates) async {
     final token = await getToken();
     if (token == null) throw ExceptionToString('Kein Token gefunden');

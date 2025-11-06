@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/utils/get_color_contrast.dart';
 import 'day_timeline.dart';
+import 'package:go_router/go_router.dart';
+
 
 class DayDetailPopup extends StatelessWidget {
   final DateTime day;
   final List<Map<String, dynamic>> shifts;
   final VoidCallback? onClose;
+  final bool showEditButton;
+  final Map<String, dynamic>? user;
 
-  const DayDetailPopup({super.key, required this.day, required this.shifts, this.onClose});
+  const DayDetailPopup({super.key, required this.day, required this.shifts, this.onClose, this.showEditButton = false, this.user});
 
   double _timeToDouble(String time) {
     try {
@@ -17,7 +21,7 @@ class DayDetailPopup extends StatelessWidget {
       final minutes = int.parse(parts[1]);
       return hours + (minutes / 60.0);
     } catch (e) {
-        return 0.0;
+      return 0.0;
     }
   }
 
@@ -50,6 +54,8 @@ class DayDetailPopup extends StatelessWidget {
         textColor: textColor,
       );
     }).toList();
+
+    final Map<String, dynamic>? firstShift = shifts.isNotEmpty ? shifts[0] : null;
 
     return GestureDetector(
       onTap: () {
@@ -89,6 +95,20 @@ class DayDetailPopup extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                               )
                           )
+                      ),
+                      if (showEditButton) IconButton(
+                        icon: const Icon(Icons.edit),
+                        tooltip: 'Schicht bearbeiten',
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            context.pushNamed('edit_shift', extra: {
+                              'shift': firstShift,
+                              'date': day.toIso8601String(),
+                              'user': user,
+                            });
+                          });
+                        },
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),

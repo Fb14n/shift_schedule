@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shift_schedule/routes/calendar_view.dart';
 import 'package:shift_schedule/routes/edit/add_user_page.dart';
 import 'package:shift_schedule/routes/edit/admin_calendar_view.dart';
+import 'package:shift_schedule/routes/edit/edit_shift_page.dart';
 import 'package:shift_schedule/routes/edit/user_list_page.dart';
 import 'package:shift_schedule/routes/holiday_editor_view.dart';
 import 'package:shift_schedule/routes/login_page.dart';
@@ -64,6 +65,18 @@ final GoRouter goRouter = GoRouter(
                 final user = state.extra as Map<String, dynamic>;
                 return MaterialPage(child: AdminCalendarView(user: user));
               },
+              routes: [
+                GoRoute(
+                  path: 'edit_shift',
+                  name: 'edit_shift',
+                  pageBuilder: (context, state) {
+                    final extra = state.extra;
+                    Map<String, dynamic>? data;
+                    if (extra is Map<String, dynamic>) data = extra;
+                    return MaterialPage(child: EditShiftPage(data: data));
+                  },
+                ),
+              ],
             ),
             GoRoute(
               path: 'add_user',

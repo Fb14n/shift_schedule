@@ -11,6 +11,8 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:shift_schedule/ui/widgets/day_detail_popup.dart';
 import 'package:shift_schedule/utils/get_color_contrast.dart';
 
+import 'edit_shift_page.dart';
+
 class AdminCalendarView extends StatefulWidget {
   final Map<String, dynamic> user;
   const AdminCalendarView({super.key, required this.user});
@@ -112,7 +114,6 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
       final userId = widget.user['id'] as int?;
       if (userId == null) {
         log('User-ID not found in widget data', name: 'AdminCalendarView');
-        // Optional: Fehlermeldung anzeigen
         if (mounted) setState(() => _isLoading = false);
         return;
       }
@@ -153,7 +154,13 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
       pageBuilder: (context, anim1, anim2) {
         return Theme(
           data: Theme.of(this.context),
-          child: DayDetailPopup(day: selectedDay, shifts: shiftsForDay),
+          child: DayDetailPopup(
+            showEditButton: true,
+            day: selectedDay,
+            shifts: shiftsForDay,
+            onClose: () {},
+            user: widget.user,
+          ),
         );
       },
       transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -170,8 +177,12 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return CustomScaffold(
-        title: Text('Lade Kalender für ${widget.user['first_name'] ?? 'Mitarbeiter'}...'),
-        body: const Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary)),
+        title: Text('Lade Kalender: ${widget.user['last_name'] ?? 'Mitarbeiter'}'),
+        body: const Column(
+            children: [
+              SizedBox(height: 20),
+              Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary))
+            ])
       );
     }
     final isCurrentMonth = _focusedDay.year == DateTime.now().year && _focusedDay.month == DateTime.now().month;

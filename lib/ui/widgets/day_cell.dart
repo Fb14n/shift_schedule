@@ -19,7 +19,7 @@ class DayCell extends StatelessWidget {
     super.key,
     required this.day,
     required this.shift,
-    this.shiftColor = CHRONOSTheme.secondary,
+    this.shiftColor,
     this.borderColor,
     this.textColor,
   });
@@ -54,13 +54,13 @@ class DayCell extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: isToday() ? shiftColor : null,
+                color: isToday() ? (shiftColor ?? CHRONOSTheme.secondary) : null,
                 shape: BoxShape.circle,
               ),
               child: Text(
                 '${day.day}',
                 style: TextStyle(
-                  color: isToday() ? textColor : null,
+                  color: isToday() ? (textColor ?? CHRONOSTheme.onSecondary) : null,
                 ),
               ),
             ),
