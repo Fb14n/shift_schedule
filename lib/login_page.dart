@@ -14,7 +14,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _employeeIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final ApiService _apiService = ApiService();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
@@ -43,7 +43,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     try {
       final token = await _apiService.login(
-        _usernameController.text,
+        _employeeIdController.text,
         _passwordController.text,
       );
       final expiryDate = DateTime.now().add(const Duration(hours: 2));
@@ -99,36 +99,25 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Abbrechen'),
             ),
-// In der Datei login_page.dart, innerhalb von _showForgotPasswordDialog
-
             ElevatedButton(
               onPressed: () async {
-                // 1. Prüfen, ob das Formular valide ist. Wenn nicht, passiert nichts.
                 if (!formKey.currentState!.validate()) {
                   return;
                 }
-
-                // 2. Den ScaffoldMessenger und Navigator SICHERN, BEVOR der Dialog geschlossen wird.
                 final scaffoldMessenger = ScaffoldMessenger.of(context);
                 final navigator = Navigator.of(context);
 
-                // 3. Den Dialog mit dem gesicherten Navigator schließen.
                 navigator.pop();
-
-                // 4. Lade-Nachricht mit dem gesicherten ScaffoldMessenger anzeigen.
                 scaffoldMessenger.showSnackBar(
                   const SnackBar(content: Text('Setze Passwort zurück...')),
                 );
 
                 try {
-                  // 5. Die asynchrone Netzwerk-Anfrage ausführen.
                   await _apiService.resetPassword(
                     username: usernameController.text,
                     employeeId: employeeIdController.text,
                     newPassword: newPasswordController.text,
                   );
-
-                  // 6. NACH dem await: Die Erfolgs-SnackBar anzeigen. Dies ist jetzt sicher.
                   scaffoldMessenger.showSnackBar(
                     const SnackBar(
                       content: Text('Passwort erfolgreich zurückgesetzt! Du kannst dich jetzt anmelden.'),
@@ -139,8 +128,6 @@ class _LoginPageState extends State<LoginPage> {
 
                 } catch (e) {
                   log('Password reset failed: $e', name: 'LoginPage');
-
-                  // 7. NACH dem await im Fehlerfall: Die Fehler-SnackBar anzeigen. Dies ist jetzt auch sicher.
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text('Fehler: ${e.toString()}'),
@@ -176,11 +163,11 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
-                      controller: _usernameController,
+                      controller: _employeeIdController,
                       cursorColor: CHRONOSTheme.onPrimary,
                       style: const TextStyle(color: CHRONOSTheme.onPrimary),
                       decoration: const InputDecoration(
-                        labelText: 'Username',
+                        labelText: 'Personalnummer',
                         labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
@@ -196,7 +183,7 @@ class _LoginPageState extends State<LoginPage> {
                       cursorColor: CHRONOSTheme.onPrimary,
                       style: const TextStyle(color: CHRONOSTheme.onPrimary),
                       decoration: const InputDecoration(
-                        labelText: 'Password',
+                        labelText: 'Passwort',
                         labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: CHRONOSTheme.onPrimary),

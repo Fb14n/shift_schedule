@@ -100,7 +100,7 @@ initDB().catch(console.error);
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Token missing" });
+  if (!token) return res.status(401).json({ error: "Token fehlt" });
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -297,13 +297,13 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   console.log("Login request body:", req.body);
-  const { username, password } = req.body;
+  const { employee_id, password } = req.body;
   try {
-    const result = await pool.query("SELECT id, first_name, last_name, employee_id, password FROM users WHERE first_name = $1", [username]);
+    const result = await pool.query("SELECT id, first_name, last_name, employee_id, password FROM users WHERE employee_id = $1", [employee_id]);
     if (result.rows.length === 0) return res.status(401).json({ error: "User not found" });
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: "Invalid password" });
+    if (!match) return res.status(401).json({ error: "Falsches Passwort" });
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "2h" });
     res.json({ access_token: token, token_type: "bearer" });
   } catch (err) {

@@ -1,10 +1,9 @@
-// language: dart
-// Datei: `lib/services/api_service.dart` (angepasst)
 import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:shift_schedule/utils/exception_to_string.dart';
 
 class ApiService {
   static final String? baseUrl = dotenv.env['BASE_URL'];
@@ -13,12 +12,12 @@ class ApiService {
   static const String _keyRefresh = 'refresh_token';
   static const String _keyExpiry = 'token_expiry';
 
-  Future<String> login(String username, String password) async {
+  Future<String> login(String employeeId, String password) async {
     log('API-Base-Url: ${dotenv.env['BASE_URL']}', name: 'ApiService');
     final response = await http.post(
       Uri.parse('${baseUrl ?? ''}/login'),
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({'username': username, 'password': password}),
+      body: json.encode({'employee_id': employeeId, 'password': password}),
     );
 
     if (response.statusCode == 200) {
@@ -30,11 +29,11 @@ class ApiService {
         log('Login successful, token saved', name: 'ApiService');
         return access;
       } else {
-        throw Exception('Login failed: Token not found in response');
+        throw ExceptionToString('Login failed: Token not found in response');
       }
     } else {
       final errorResponse = response.body.isNotEmpty ? json.decode(response.body) : {};
-      throw Exception('Login failed: ${errorResponse['error'] ?? 'Unknown error'}');
+      throw ExceptionToString('Login fehlgeschlagen: ${errorResponse['error'] ?? 'Unbekannter Fehler'}');
     }
   }
 
@@ -46,7 +45,7 @@ class ApiService {
       log('Logout successful: credentials cleared', name: 'ApiService');
     } catch (e) {
       log('Logout failed: $e', name: 'ApiService');
-      throw Exception('Logout failed: $e');
+      throw ExceptionToString('Logout fehlgeschlagen: $e');
     }
   }
 
@@ -129,15 +128,15 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> fetchShifts([String? token]) async {
     final usedToken = token ?? await getToken();
-    if (usedToken == null) throw Exception('Kein Token gefunden');
-    if (baseUrl == null || baseUrl!.isEmpty) throw Exception('BASE_URL nicht konfiguriert');
+    if (usedToken == null) throw ExceptionToString('Kein Token gefunden');
+    if (baseUrl == null || baseUrl!.isEmpty) throw ExceptionToString('BASE_URL nicht konfiguriert');
     try {
       final response = await http.get(Uri.parse('$baseUrl/shifts'), headers: {'Authorization': 'Bearer $usedToken'});
       if (response.statusCode == 200) {
         return List<Map<String, dynamic>>.from(jsonDecode(response.body));
       } else {
         final bodySnippet = response.body.length > 500 ? '${response.body.substring(0, 500)}...' : response.body;
-        throw Exception('Failed to load shifts: ${response.statusCode} ${bodySnippet}');
+        throw ExceptionToString('Failed to load shifts: ${response.statusCode} $bodySnippet');
       }
     } catch (e) {
       log('fetchShifts error: $e', name: 'ApiService');
@@ -149,39 +148,43 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> fetchAllShifts() async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.get(Uri.parse('$baseUrl/shifts/all'), headers: {'Authorization': 'Bearer $token'});
-    if (response.statusCode == 200) return List<Map<String, dynamic>>.from(jsonDecode(response.body));
-    else throw Exception('Fehler beim Laden aller Schichten');
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw ExceptionToString('Fehler beim Laden aller Schichten');
+    }
   }
 
   Future<List<Map<String, dynamic>>> getShiftTypes() async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.get(Uri.parse('$baseUrl/shift-types'), headers: {'Authorization': 'Bearer $token'});
-    if (response.statusCode == 200) return List<Map<String, dynamic>>.from(jsonDecode(response.body));
-    else {
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
       log('Fehler beim Abrufen der Schichttypen: ${response.statusCode}', name: 'ApiService');
-      throw Exception('Fehler beim Laden der Schichttypen');
+      throw ExceptionToString('Fehler beim Laden der Schichttypen');
     }
   }
 
   Future<Map<String, dynamic>> fetchUserDetails() async {
     final token = await getToken();
-    if (token == null) throw Exception('No token stored');
+    if (token == null) throw ExceptionToString('Kein Token gespeichert');
     final response = await http.get(Uri.parse('$baseUrl/user/details'), headers: {'Authorization': 'Bearer $token'});
     if (response.statusCode == 200) {
       log('User details fetched', name: 'ApiService');
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to fetch user details: ${response.statusCode} ${response.body}');
+      throw ExceptionToString('User-Details-Abfrage fehlgeschlagen: ${response.statusCode} ${response.body}');
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchShiftsForUser(int userId) async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
-    if (baseUrl == null || baseUrl!.isEmpty) throw Exception('BASE_URL nicht konfiguriert');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
+    if (baseUrl == null || baseUrl!.isEmpty) throw ExceptionToString('BASE_URL nicht konfiguriert');
 
     try {
       final response = await http.get(
@@ -193,7 +196,7 @@ class ApiService {
         return List<Map<String, dynamic>>.from(jsonDecode(response.body));
       } else {
         final bodySnippet = response.body.length > 500 ? '${response.body.substring(0, 500)}...' : response.body;
-        throw Exception('Failed to load shifts for user $userId: ${response.statusCode} $bodySnippet');
+        throw ExceptionToString('User-Schichten Laden fehlgeschlagen: $userId: ${response.statusCode} $bodySnippet');
       }
     } catch (e) {
       log('fetchShiftsForUser error for user $userId: $e', name: 'ApiService');
@@ -203,23 +206,23 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> fetchUsers() async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.get(Uri.parse('$baseUrl/users'), headers: {'Authorization': 'Bearer $token'});
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
     } else {
-      throw Exception('Fehler beim Laden der Benutzer');
+      throw ExceptionToString('Fehler beim Laden der Benutzer');
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchCompanies() async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.get(Uri.parse('$baseUrl/companies'), headers: {'Authorization': 'Bearer $token'});
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
     } else {
-      throw Exception('Fehler beim Laden der Firmen');
+      throw ExceptionToString('Fehler beim Laden der Firmen');
     }
   }
 
@@ -233,7 +236,7 @@ class ApiService {
     bool? isAdmin,
   }) async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final body = {
       'first_name': firstName,
       'last_name': lastName,
@@ -250,13 +253,13 @@ class ApiService {
     if (response.statusCode == 201 || response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Fehler beim Erstellen des Benutzers: ${response.body}');
+      throw ExceptionToString('Fehler beim Erstellen des Benutzers: ${response.body}');
     }
   }
 
   Future<Map<String, dynamic>> updateUser(int id, Map<String, dynamic> updates) async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.put(Uri.parse('$baseUrl/users/$id'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(updates),
@@ -264,13 +267,13 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Fehler beim Aktualisieren des Benutzers: ${response.body}');
+      throw ExceptionToString('Fehler beim Aktualisieren des Benutzers: ${response.body}');
     }
   }
 
   Future<Map<String, dynamic>> createCompany({ required String name, String? address }) async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.post(Uri.parse('$baseUrl/companies'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'name': name, if (address != null) 'address': address}),
@@ -278,13 +281,13 @@ class ApiService {
     if (response.statusCode == 201 || response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Fehler beim Erstellen der Firma: ${response.body}');
+      throw ExceptionToString('Fehler beim Erstellen der Firma: ${response.body}');
     }
   }
 
   Future<Map<String, dynamic>> updateCompany(int id, Map<String, dynamic> updates) async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.put(Uri.parse('$baseUrl/companies/$id'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(updates),
@@ -292,7 +295,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Fehler beim Aktualisieren der Firma: ${response.body}');
+      throw ExceptionToString('Fehler beim Aktualisieren der Firma: ${response.body}');
     }
   }
 
@@ -302,7 +305,7 @@ class ApiService {
     required int shiftTypeId,
   }) async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.post(Uri.parse('$baseUrl/shifts'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({
@@ -314,13 +317,13 @@ class ApiService {
     if (response.statusCode == 201 || response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Fehler beim Erstellen der Schicht: ${response.body}');
+      throw ExceptionToString('Fehler beim Erstellen der Schicht: ${response.body}');
     }
   }
 
   Future<Map<String, dynamic>> updateShift(int id, Map<String, dynamic> updates) async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
     final response = await http.put(Uri.parse('$baseUrl/shifts/$id'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(updates),
@@ -328,14 +331,14 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Fehler beim Aktualisieren der Schicht: ${response.body}');
+      throw ExceptionToString('Fehler beim Aktualisieren der Schicht: ${response.body}');
     }
   }
 
   Future<Map<String, dynamic>> updateShiftTypeColor(int id, String newColor) async {
     final token = await getToken();
-    if (token == null) throw Exception('Kein Token gefunden');
-    if (!newColor.startsWith('#') || newColor.length != 7) throw Exception('Ungültiges Farbformat. Benutze #RRGGBB.');
+    if (token == null) throw ExceptionToString('Kein Token gefunden');
+    if (!newColor.startsWith('#') || newColor.length != 7) throw ExceptionToString('Ungültiges Farbformat. Benutze #RRGGBB.');
     final response = await http.put(Uri.parse('$baseUrl/shift-types/$id/color'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'color': newColor}),
@@ -343,7 +346,7 @@ class ApiService {
     if (response.statusCode == 200) return jsonDecode(response.body);
     else {
       log('Fehler beim Aktualisieren der Schichtfarbe: ${response.statusCode}', name: 'ApiService');
-      throw Exception('Fehler beim Aktualisieren der Schichtfarbe');
+      throw ExceptionToString('Fehler beim Aktualisieren der Schichtfarbe');
     }
   }
 
@@ -355,7 +358,7 @@ class ApiService {
     if (response.statusCode == 200) return;
     else {
       final errorData = response.body.isNotEmpty ? jsonDecode(response.body) : {};
-      throw Exception(errorData['error'] ?? 'Unbekannter Fehler beim Zurücksetzen des Passworts.');
+      throw ExceptionToString(errorData['error'] ?? 'Unbekannter Fehler beim Zurücksetzen des Passworts.');
     }
   }
 }
