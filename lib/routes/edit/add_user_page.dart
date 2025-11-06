@@ -27,8 +27,9 @@ class _AddUserPageState extends State<AddUserPage> {
   bool _isAdmin = false;
   bool _isSaving = false;
   bool _isPasswordVisible = true;
+  int? _companyId;
 
-  late Future<String> _companyDetailsFuture;
+  late Future<Map<String, dynamic>> _companyDetailsFuture;
 
   @override
   void initState() {
@@ -47,23 +48,35 @@ class _AddUserPageState extends State<AddUserPage> {
     super.dispose();
   }
 
-  Future<String> _fetchCompanyDetails() async {
+  Future<Map<String, dynamic>> _fetchCompanyDetails() async {
     try {
       final companies = await _apiService.fetchCompanies();
       if (companies.isNotEmpty) {
-        final companyName = companies.first['name'];
-        log('Firma: $companyName', name: 'AddUserPage');
-        return companyName;
+        final company = companies.first;
+        final companyName = company['name'];
+        final companyId = company['id'];
+        log('Firma: $companyName (ID: $companyId)', name: 'AddUserPage');
+        return {'id': companyId, 'name': companyName};
       }
-      return 'Keine Firma gefunden';
+      return {'id': null, 'name': 'Keine Firma gefunden'};
     } catch (e) {
       log('Fehler beim Laden der Firma: $e', name: 'AddUserPage');
-      return 'Fehler beim Laden';
+      return {'id': null, 'name': 'Fehler beim Laden'};
     }
   }
-
   Future<void> _saveUser() async {
     if (_formKey.currentState?.validate() ?? false) {
+      // Sicherheitscheck, ob companyId geladen wurde
+      if (_companyId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Firmen-ID konnte nicht geladen werden. Bitte versuchen Sie es erneut.'),
+            backgroundColor: CHRONOSTheme.error,
+          ),
+        );
+        return;
+      }
+
       setState(() => _isSaving = true);
       try {
         await _apiService.createUser(
@@ -73,13 +86,16 @@ class _AddUserPageState extends State<AddUserPage> {
           password: _passwordController.text,
           holidays: int.tryParse(_vacationDaysController.text) ?? 30,
           isAdmin: _isAdmin,
+          // --- HIER DIE COMPANY ID ÜBERGEBEN ---
+          companyId: _companyId,
         );
 
         if (mounted) {
+          // ... (restliche Erfolgslogik bleibt gleich)
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Benutzer erfolgreich erstellt!'),
-              backgroundColor: Colors.green,
+              backgroundColor: CHRONOSTheme.success,
             ),
           );
           context.pop();
@@ -89,7 +105,7 @@ class _AddUserPageState extends State<AddUserPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Fehler: ${e.toString()}'),
+              content: Text(e.toString(), style: const TextStyle(color: CHRONOSTheme.onError)),
               backgroundColor: CHRONOSTheme.error,
             ),
           );
@@ -106,7 +122,7 @@ class _AddUserPageState extends State<AddUserPage> {
   Widget build(BuildContext context) {
     return CustomScaffold(
       title: const Text('Neuen Mitarbeiter anlegen'),
-        body: FutureBuilder<String>(
+        body: FutureBuilder<Map<String, dynamic>>(
             future: _companyDetailsFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -122,7 +138,9 @@ class _AddUserPageState extends State<AddUserPage> {
                 return Center(child: Text('Fehler: ${snapshot.error ??
                     'Firmendetails konnten nicht geladen werden.'}'));
               }
-              _companyNameController.text = snapshot.data!;
+              final companyData = snapshot.data!;
+              _companyNameController.text = companyData['name'] ?? 'Fehler';
+              _companyId = companyData['id']; // Speichere die ID für den save-Aufruf
 
               return Form(
                 key: _formKey,

@@ -265,7 +265,7 @@ class ApiService {
         final errorBody = jsonDecode(response.body);
         throw ExceptionToString(errorBody['error'] ?? 'Fehler beim Erstellen des Benutzers.');
       } catch (_) {
-        throw ExceptionToString('Fehler beim Erstellen des Benutzers: ${response.statusCode}');
+        throw ExceptionToString('Fehler beim Erstellen des Benutzers: ${response.body}');
       }
     }
   }

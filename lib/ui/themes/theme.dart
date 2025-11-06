@@ -7,7 +7,9 @@ class CHRONOSTheme {
   static const Color secondary = Color(0xFF305CA3);
   static const Color onSecondary = Colors.white;
   static const Color error = Colors.red;
+  static const Color onError = Colors.white;
   static const Color success = Colors.green;
+  static const Color onSuccess = Colors.white;
 
   static final ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,

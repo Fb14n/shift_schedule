@@ -55,7 +55,6 @@ async function runSeed() {
   }
 }
 
-// Init DB: an Seed angepasst
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -63,7 +62,7 @@ async function initDB() {
       first_name TEXT,
       last_name TEXT,
       password TEXT NOT NULL,
-      employee_id INTEGER UNIQUE,
+      employee_id INTEGER,
       company_id INTEGER,
       holidays INTEGER DEFAULT 0,
       is_admin BOOLEAN DEFAULT false
@@ -327,7 +326,7 @@ app.post("/reset-password", async (req, res) => {
 app.get("/user/details", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const userResult = await pool.query("SELECT first_name, last_name, employee_id, holidays, is_admin FROM users WHERE id = $1", [userId]);
+    const userResult = await pool.query("SELECT first_name, last_name, employee_id, holidays, is_admin, company_id FROM users WHERE id = $1", [userId]);
     const vacationResult = await pool.query("SELECT COUNT(*) AS holidays FROM shifts WHERE user_id = $1 AND shift_type_id = 5", [userId]);
     const sickResult = await pool.query("SELECT COUNT(*) AS sick_days FROM shifts WHERE user_id = $1 AND shift_type_id = 4", [userId]);
     if (userResult.rows.length === 0) return res.status(404).json({ error: "User not found" });
@@ -338,7 +337,8 @@ app.get("/user/details", authenticateToken, async (req, res) => {
       holidays: parseInt(vacationResult.rows[0].holidays),
       sick_days: parseInt(sickResult.rows[0].sick_days),
       vacation_balance: userResult.rows[0].holidays,
-      is_admin: userResult.rows[0].is_admin
+      is_admin: userResult.rows[0].is_admin,
+      company_id: userResult.rows[0].company_id
     });
   } catch (err) {
     console.error("Error fetching user details:", err.stack);

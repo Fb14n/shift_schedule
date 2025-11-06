@@ -1,3 +1,4 @@
+// Datei: `lib/routes/edit/user_list_page.dart` (Anpassungen für Unternehmensfilter)
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -7,7 +8,6 @@ import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/floating_action_button.dart';
-
 
 class UserListPage extends StatefulWidget {
   const UserListPage({super.key});
@@ -22,6 +22,7 @@ class _UserListPageState extends State<UserListPage> {
   List<Map<String, dynamic>> _filtered = [];
   bool _loading = true;
   final TextEditingController _searchController = TextEditingController();
+  int? _companyId; // neues Feld: aktuelle Firmen-ID
 
   @override
   void initState() {
@@ -33,22 +34,39 @@ class _UserListPageState extends State<UserListPage> {
   Future<void> _loadUsers({bool showCircularProgressIndicator = false}) async {
     if (showCircularProgressIndicator) setState(() => _loading = true);
     try {
+      // aktuelle Benutzerdetails holen, um company_id zu wissen
+      try {
+        final details = await api.fetchUserDetails();
+        _companyId = details['company_id'] as int?;
+      } catch (_) {
+        _companyId = null;
+      }
+
       final users = await api.fetchUsers();
       setState(() {
         _users = List<Map<String, dynamic>>.from(users);
-        _filtered = _users;
+        // Filter direkt nach company_id (falls bekannt)
+        if (_companyId != null) {
+          _filtered = _users.where((u) => u['company_id'] == _companyId).toList();
+        } else {
+          _filtered = _users;
+        }
       });
-    } catch (_) {}
+    } catch (_) {
+      // Fehler still swallowen wie vorher
+    }
     if (showCircularProgressIndicator) setState(() => _loading = false);
   }
 
   void _applyFilter() {
     final q = _searchController.text.toLowerCase();
     setState(() {
+      // Basisliste ist immer die company-gefilterte Liste
+      final base = _companyId != null ? _users.where((u) => u['company_id'] == _companyId).toList() : _users;
       if (q.isEmpty) {
-        _filtered = _users;
+        _filtered = base;
       } else {
-        _filtered = _users.where((u) {
+        _filtered = base.where((u) {
           final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.toLowerCase();
           final id = (u['employee_id']?.toString() ?? '').toLowerCase();
           return name.contains(q) || id.contains(q);
@@ -61,25 +79,22 @@ class _UserListPageState extends State<UserListPage> {
   Widget build(BuildContext context) {
     return CustomScaffold(
       floatingActionButton: CustomFloatingActionButton(
-          onPressed: () {
-            context.pushNamed('add_user').then((_) {
-              _loadUsers();
-            });
-          },
+        onPressed: () {
+          context.pushNamed('add_user').then((_) {
+            _loadUsers();
+          });
+        },
         icon: Symbols.person_add_rounded,
       ),
       onRefresh: _loadUsers,
-      title:  const Text('Mitarbeiter verwalten'),
+      title: const Text('Mitarbeiter verwalten'),
       body: _loading
           ? const Column(
-          children: [
-            SizedBox(height: 16),
-            Center(
-                child: CircularProgressIndicator(
-                    color: CHRONOSTheme.secondary
-                )
-            )
-          ])
+        children: [
+          SizedBox(height: 16),
+          Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary))
+        ],
+      )
           : ListView.separated(
         itemCount: _filtered.length + 1,
         separatorBuilder: (context, index) {
