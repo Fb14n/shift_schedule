@@ -69,6 +69,10 @@ async function initDB() {
     );
   `);
   await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS users_employee_company_unique_idx
+        ON users(employee_id, company_id);
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS companies (
       id SERIAL PRIMARY KEY,
       name TEXT UNIQUE NOT NULL,
@@ -84,7 +88,6 @@ async function initDB() {
       type_time_end TEXT
     );
   `);
-  // shifts in Seed: (id, shift_date, shift_type_id, user_id)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS shifts (
       id SERIAL PRIMARY KEY,
@@ -290,9 +293,21 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   console.log("Login request body:", req.body);
-  const { employee_id, password } = req.body;
+  const { employee_id, password, company_id } = req.body;
   try {
-    const result = await pool.query("SELECT id, first_name, last_name, employee_id, password, is_admin, company_id, holidays FROM users WHERE employee_id = $1", [employee_id]);
+    let result;
+    if (company_id !== undefined && company_id !== null) {
+      result = await pool.query(
+        "SELECT id, first_name, last_name, employee_id, password, is_admin, company_id, holidays FROM users WHERE employee_id = $1 AND company_id = $2",
+        [employee_id, company_id]
+      );
+    } else {
+      result = await pool.query(
+        "SELECT id, first_name, last_name, employee_id, password, is_admin, company_id, holidays FROM users WHERE employee_id = $1",
+        [employee_id]
+      );
+    }
+
     if (result.rows.length === 0) return res.status(401).json({ error: "User not found" });
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
@@ -369,7 +384,9 @@ app.post("/users", authenticateToken, async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    if (err.code === "23505") return res.status(400).json({ error: "User with this employee_id already exists" });
+    if (err.code === "23505") {
+      return res.status(400).json({ error: "Benutzer mit dieser Mitarbeiter-ID existiert bereits in dieser Firma" });
+    }
     console.error("Error creating user:", err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
