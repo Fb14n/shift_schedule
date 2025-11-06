@@ -65,7 +65,7 @@ async function initDB() {
       password TEXT NOT NULL,
       employee_id INTEGER UNIQUE,
       company_id INTEGER,
-      vacation_days INTEGER DEFAULT 0,
+      holidays INTEGER DEFAULT 0,
       is_admin BOOLEAN DEFAULT false
     );
   `);
@@ -134,7 +134,6 @@ function toHexColor(colorValue) {
   return `#${hex.toUpperCase()}`;
 }
 
-// Shift-types
 app.get("/shift-types", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT id, type_name, type_color, type_time_start, type_time_end FROM shift_types ORDER BY id');
@@ -163,7 +162,6 @@ app.put("/shift-types/:id/color", authenticateToken, async (req, res) => {
   }
 });
 
-// Shifts (user-specific)
 app.get("/shifts", authenticateToken, async (req, res) => {
   try {
     const userId = req.user && req.user.userId;
@@ -190,14 +188,11 @@ app.get("/shifts", authenticateToken, async (req, res) => {
 });
 
 app.get("/shifts/user/:userId", authenticateToken, async (req, res) => {
-  // Stelle sicher, dass der eingeloggte User ein Admin ist (Sicherheitsüberprüfung)
   const requesterId = req.user.userId;
   const adminCheck = await pool.query('SELECT is_admin FROM users WHERE id = $1', [requesterId]);
   if (adminCheck.rows.length === 0 || !adminCheck.rows[0].is_admin) {
     return res.status(403).json({ error: "Forbidden: Not an admin" });
   }
-
-  // Fahre fort, wenn der User ein Admin ist
   const { userId } = req.params;
   try {
     const result = await pool.query(
@@ -281,7 +276,6 @@ app.put("/shifts/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// Users / Auth
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -299,7 +293,7 @@ app.post("/login", async (req, res) => {
   console.log("Login request body:", req.body);
   const { employee_id, password } = req.body;
   try {
-    const result = await pool.query("SELECT id, first_name, last_name, employee_id, password FROM users WHERE employee_id = $1", [employee_id]);
+    const result = await pool.query("SELECT id, first_name, last_name, employee_id, password, is_admin, company_id, holidays FROM users WHERE employee_id = $1", [employee_id]);
     if (result.rows.length === 0) return res.status(401).json({ error: "User not found" });
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
@@ -341,9 +335,9 @@ app.get("/user/details", authenticateToken, async (req, res) => {
       first_name: userResult.rows[0].first_name,
       last_name: userResult.rows[0].last_name,
       employee_id: userResult.rows[0].employee_id,
-      vacation_days: parseInt(vacationResult.rows[0].vacation_days),
+      holidays: parseInt(vacationResult.rows[0].holidays),
       sick_days: parseInt(sickResult.rows[0].sick_days),
-      vacation_balance: userResult.rows[0].vacation_days,
+      vacation_balance: userResult.rows[0].holidays,
       is_admin: userResult.rows[0].is_admin
     });
   } catch (err) {
@@ -363,7 +357,7 @@ app.get("/users", authenticateToken, async (req, res) => {
 });
 
 app.post("/users", authenticateToken, async (req, res) => {
-  const { first_name, last_name, employee_id, password, company_id, vacation_days, is_admin } = req.body;
+  const { first_name, last_name, employee_id, password, company_id, holidays, is_admin } = req.body;
   if (!first_name || !last_name || employee_id === undefined || !password) {
     return res.status(400).json({ error: "first_name, last_name, employee_id and password are required" });
   }
@@ -371,7 +365,7 @@ app.post("/users", authenticateToken, async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, first_name, last_name, employee_id, company_id, vacation_days, is_admin',
-      [first_name, last_name, hashed, employee_id, company_id || null, vacation_days || 0, is_admin || false]
+      [first_name, last_name, hashed, employee_id, company_id || null, holidays || 0, is_admin || false]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -418,7 +412,7 @@ app.put("/users/:id", authenticateToken, async (req, res) => {
 // Companies unchanged
 app.get("/companies", authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, name, address FROM companies ORDER BY id');
+    const result = await pool.query('SELECT id, name, holidays_default FROM companies ORDER BY id');
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching companies:", err.stack);

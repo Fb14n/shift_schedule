@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
-import 'package:shift_schedule/utils/toggle_theme.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shift_schedule/utils/toggle_theme.dart';
 
 
 class CustomScaffold extends StatefulWidget {
@@ -12,6 +12,7 @@ class CustomScaffold extends StatefulWidget {
   final Widget? title;
   final Future<void> Function()? onRefresh;
   final bool showEditButton;
+  final bool showSettingsButton;
   final Widget? floatingActionButton;
 
   const CustomScaffold({
@@ -20,6 +21,7 @@ class CustomScaffold extends StatefulWidget {
     this.title,
     this.onRefresh,
     this.showEditButton = false,
+    this.showSettingsButton = false,
     this.floatingActionButton,
 
   });
@@ -42,7 +44,7 @@ class _CustomScaffoldState extends State<CustomScaffold> {
   Widget build(BuildContext context) {
     final String? currentRoute = GoRouterState.of(context).name;
     final bool canPop = context.canPop();
-    //final themeMode = ThemeManager.themeModeNotifier.value;
+    final themeMode = ThemeManager.themeModeNotifier.value;
     final String logoAsset = Theme.of(context).brightness == Brightness.light
         ? 'assets/logo/logo_vertical.svg'
         : 'assets/logo/logo_vertical_dark.svg';
@@ -65,14 +67,14 @@ class _CustomScaffoldState extends State<CustomScaffold> {
           ),
         ),
         actions: [
-          // IconButton(
-          //   icon: Icon(
-          //     themeMode == ThemeMode.light
-          //         ? Symbols.dark_mode
-          //         : Symbols.light_mode,
-          //   ),
-          //   onPressed: ThemeManager.toggleTheme,
-          // ),
+          IconButton(
+            icon: Icon(
+              themeMode == ThemeMode.light
+                  ? Symbols.dark_mode
+                  : Symbols.light_mode,
+            ),
+            onPressed: ThemeManager.toggleTheme,
+          ),
           FutureBuilder<Map<String, dynamic>>(
             future: _userDetailsFuture,
             builder: (context, snapshot) {
@@ -91,7 +93,7 @@ class _CustomScaffoldState extends State<CustomScaffold> {
               );
             },
           ),
-          if (currentRoute != 'settings')
+          if (widget.showSettingsButton)
             IconButton(
               icon: const Icon(Symbols.settings_rounded),
               onPressed: () => context.pushNamed('settings'),
@@ -272,8 +274,8 @@ class _CustomScaffoldState extends State<CustomScaffold> {
           ? null
           :  Padding(
         padding: const EdgeInsets.only(
-          right: 24,
-          bottom: 24,
+          right: 20,
+          bottom: 20,
         ),
         child: widget.floatingActionButton,
       ),

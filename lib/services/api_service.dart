@@ -174,7 +174,7 @@ class ApiService {
     if (token == null) throw ExceptionToString('Kein Token gespeichert');
     final response = await http.get(Uri.parse('$baseUrl/user/details'), headers: {'Authorization': 'Bearer $token'});
     if (response.statusCode == 200) {
-      log('User details fetched', name: 'ApiService');
+      log('User details fetched: ${response.body}', name: 'ApiService');
       return jsonDecode(response.body);
     } else {
       throw ExceptionToString('User-Details-Abfrage fehlgeschlagen: ${response.statusCode} ${response.body}');
@@ -237,23 +237,36 @@ class ApiService {
   }) async {
     final token = await getToken();
     if (token == null) throw ExceptionToString('Kein Token gefunden');
+    final int? employeeIdAsInt = int.tryParse(employeeId);
+    if (employeeIdAsInt == null) {
+      throw ExceptionToString('Mitarbeiter-ID muss eine gültige Zahl sein.');
+    }
+
     final body = {
       'first_name': firstName,
       'last_name': lastName,
-      'employee_id': int.tryParse(employeeId) ?? employeeId,
+      'employee_id': employeeIdAsInt,
       'password': password,
       if (companyId != null) 'company_id': companyId,
       if (vacationDays != null) 'vacation_days': vacationDays,
       if (isAdmin != null) 'is_admin': isAdmin,
     };
-    final response = await http.post(Uri.parse('$baseUrl/users'),
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/users'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(body),
     );
-    if (response.statusCode == 201 || response.statusCode == 200) {
+
+    if (response.statusCode == 201) { // Nur auf 201 prüfen für "Created"
       return jsonDecode(response.body);
     } else {
-      throw ExceptionToString('Fehler beim Erstellen des Benutzers: ${response.body}');
+      try {
+        final errorBody = jsonDecode(response.body);
+        throw ExceptionToString(errorBody['error'] ?? 'Fehler beim Erstellen des Benutzers.');
+      } catch (_) {
+        throw ExceptionToString('Fehler beim Erstellen des Benutzers: ${response.statusCode}');
+      }
     }
   }
 
@@ -301,7 +314,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> createShift({
     required int userId,
-    required String shiftDate, // ISO yyyy-mm-dd
+    required String shiftDate,
     required int shiftTypeId,
   }) async {
     final token = await getToken();

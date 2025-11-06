@@ -188,6 +188,7 @@ class _CalendarViewState extends State<CalendarView> {
         visible: !isCurrentMonth,
       ),
       showEditButton: true,
+      showSettingsButton: true,
       onRefresh: _loadAllData,
       body: Padding(
         padding: const EdgeInsets.all(10),

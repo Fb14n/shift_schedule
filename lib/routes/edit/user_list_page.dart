@@ -45,8 +45,9 @@ class _UserListPageState extends State<UserListPage> {
   void _applyFilter() {
     final q = _searchController.text.toLowerCase();
     setState(() {
-      if (q.isEmpty) _filtered = _users;
-      else {
+      if (q.isEmpty) {
+        _filtered = _users;
+      } else {
         _filtered = _users.where((u) {
           final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.toLowerCase();
           final id = (u['employee_id']?.toString() ?? '').toLowerCase();
@@ -61,7 +62,9 @@ class _UserListPageState extends State<UserListPage> {
     return CustomScaffold(
       floatingActionButton: CustomFloatingActionButton(
           onPressed: () {
-
+            context.pushNamed('add_user').then((_) {
+              _loadUsers();
+            });
           },
         icon: Symbols.person_add_rounded,
       ),

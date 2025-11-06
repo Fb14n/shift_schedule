@@ -6,6 +6,7 @@ import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/day_cell.dart';
+import 'package:shift_schedule/ui/widgets/floating_action_button.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:shift_schedule/ui/widgets/day_detail_popup.dart';
 import 'package:shift_schedule/utils/get_color_contrast.dart';
@@ -69,7 +70,7 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
         });
       }
     } catch (e) {
-      log('Error loading shift colors: $e', name: 'CalendarView');
+      log('Error loading shift colors: $e', name: 'AdminCalendarView');
     }
   }
 
@@ -108,12 +109,15 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
 
   Future<void> _loadShifts() async {
     try {
-      final token = await apiService.getToken();
-      if (token == null) {
-        log('No token found', name: 'CalendarView');
+      final userId = widget.user['id'] as int?;
+      if (userId == null) {
+        log('User-ID not found in widget data', name: 'AdminCalendarView');
+        // Optional: Fehlermeldung anzeigen
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
-      final shiftsData = await apiService.fetchShifts(token);
+
+      final shiftsData = await apiService.fetchShiftsForUser(userId);
       if (!mounted) return;
 
       final Map<DateTime, Map<String, dynamic>> shiftsMap = {};
@@ -125,11 +129,11 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
 
       setState(() {
         _shifts = shiftsMap;
-        log('Shifts successfully loaded.', name: 'CalendarView');
+        log('Shifts for user $userId successfully loaded.', name: 'AdminCalendarView');
       });
     } catch (e, stack) {
-      log('Error loading shifts: $e', name: 'CalendarView');
-      log('$stack', name: 'CalendarView');
+      log('Error loading shifts for user: $e', name: 'AdminCalendarView');
+      log('$stack', name: 'AdminCalendarView');
     }
   }
 
@@ -165,12 +169,28 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary));
+      return CustomScaffold(
+        title: Text('Lade Kalender für ${widget.user['first_name'] ?? 'Mitarbeiter'}...'),
+        body: const Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary)),
+      );
     }
-    final isCurrentMonth = _focusedDay.year == DateTime.now().year &&
-        _focusedDay.month == DateTime.now().month;
+    final isCurrentMonth = _focusedDay.year == DateTime.now().year && _focusedDay.month == DateTime.now().month;
+    final userName = '${widget.user['first_name'] ?? ''} ${widget.user['last_name'] ?? ''}';
 
     return CustomScaffold(
+      floatingActionButton: CustomFloatingActionButton(
+        heroTag: 'todayButton',
+        tooltip: 'Zum aktuellen Monat springen',
+        icon: Symbols.today_rounded,
+        onPressed: () {
+          setState(() {
+            _focusedDay = DateTime.now();
+            _updateNavigationButtons();
+          });
+        },
+        visible: !isCurrentMonth,
+      ),
+      title: Text(userName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       onRefresh: _loadAllData,
       body: Padding(
         padding: const EdgeInsets.all(10),
@@ -259,28 +279,6 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
                   ),
                 ),
               ],
-            ),
-            Positioned(
-              bottom: 24,
-              right: 24,
-              child: Visibility(
-                visible: !isCurrentMonth,
-                child: FloatingActionButton(
-                  heroTag: 'todayButton',
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime.now();
-                      _updateNavigationButtons();
-                    });
-                  },
-                  tooltip: 'Zum aktuellen Monat springen',
-                  backgroundColor: CHRONOSTheme.primary,
-                  child: const Icon(
-                      Symbols.today_rounded,
-                      color: CHRONOSTheme.onPrimary
-                  ),
-                ),
-              ),
             ),
           ],
         ),
