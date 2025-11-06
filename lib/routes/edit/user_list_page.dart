@@ -22,7 +22,7 @@ class _UserListPageState extends State<UserListPage> {
   List<Map<String, dynamic>> _filtered = [];
   bool _loading = true;
   final TextEditingController _searchController = TextEditingController();
-  int? _companyId; // neues Feld: aktuelle Firmen-ID
+  int? _companyId;
 
   @override
   void initState() {
@@ -34,7 +34,6 @@ class _UserListPageState extends State<UserListPage> {
   Future<void> _loadUsers({bool showCircularProgressIndicator = false}) async {
     if (showCircularProgressIndicator) setState(() => _loading = true);
     try {
-      // aktuelle Benutzerdetails holen, um company_id zu wissen
       try {
         final details = await api.fetchUserDetails();
         _companyId = details['company_id'] as int?;
@@ -43,25 +42,32 @@ class _UserListPageState extends State<UserListPage> {
       }
 
       final users = await api.fetchUsers();
+      final parsed = List<Map<String, dynamic>>.from(users);
+      int empValue(Map<String, dynamic> u) {
+        final v = u['employee_id'];
+        if (v is int) return v;
+        if (v is String) return int.tryParse(v) ?? 0;
+        if (v is num) return v.toInt();
+        return 0;
+      }
+
+      parsed.sort((a, b) => empValue(a).compareTo(empValue(b)));
+
       setState(() {
-        _users = List<Map<String, dynamic>>.from(users);
-        // Filter direkt nach company_id (falls bekannt)
+        _users = parsed;
         if (_companyId != null) {
           _filtered = _users.where((u) => u['company_id'] == _companyId).toList();
         } else {
           _filtered = _users;
         }
       });
-    } catch (_) {
-      // Fehler still swallowen wie vorher
-    }
+    } catch (_) {}
     if (showCircularProgressIndicator) setState(() => _loading = false);
   }
 
   void _applyFilter() {
     final q = _searchController.text.toLowerCase();
     setState(() {
-      // Basisliste ist immer die company-gefilterte Liste
       final base = _companyId != null ? _users.where((u) => u['company_id'] == _companyId).toList() : _users;
       if (q.isEmpty) {
         _filtered = base;
