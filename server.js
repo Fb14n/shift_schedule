@@ -373,45 +373,30 @@ app.get("/users", authenticateToken, async (req, res) => {
 
 app.post("/users", authenticateToken, async (req, res) => {
   const { first_name, last_name, employee_id, password, company_id, holidays, is_admin } = req.body;
+
   if (!first_name || !last_name || employee_id === undefined || !password) {
     return res.status(400).json("Vorname, Nachname, Personalnummer und Passwort sind notwendig");
   }
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    const counterCompanyId = company_id == null ? 0 : company_id;
-    const existingUser = await client.query(
+    const existingUser = await pool.query(
       'SELECT id FROM users WHERE employee_id = $1 AND company_id = $2',
       [employee_id, company_id || null]
     );
+
     if (existingUser.rows.length > 0) {
-      await client.query('ROLLBACK');
       return res.status(400).json('Benutzer mit dieser Mitarbeiter-ID existiert bereits in dieser Firma');
     }
-    const counterSelect = await client.query('SELECT last_id FROM user_counters WHERE company_id = $1 FOR UPDATE', [counterCompanyId]);
-    let newId;
-    if (counterSelect.rows.length === 0) {
-      const maxRes = await client.query('SELECT COALESCE(MAX(id), 0) AS max_id FROM users WHERE company_id = $1', [company_id || null]);
-      const start = (maxRes.rows[0].max_id || 0) + 1;
-      await client.query('INSERT INTO user_counters (company_id, last_id) VALUES ($1, $2)', [counterCompanyId, start]);
-      newId = start;
-    } else {
-      newId = counterSelect.rows[0].last_id + 1;
-      await client.query('UPDATE user_counters SET last_id = $1 WHERE company_id = $2', [newId, counterCompanyId]);
-    }
     const hashed = await bcrypt.hash(password, 10);
-    const insertRes = await client.query(
-      'INSERT INTO users (id, first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, first_name, last_name, employee_id, company_id, holidays, is_admin',
-      [newId, first_name, last_name, hashed, employee_id, company_id || null, holidays || 0, is_admin || false]
+    const result = await pool.query(
+      'INSERT INTO users (first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, first_name, last_name, employee_id, company_id, holidays, is_admin',
+      [first_name, last_name, hashed, employee_id, company_id || null, holidays || 0, is_admin || false]
     );
-    await client.query('COMMIT');
-    res.status(201).json(insertRes.rows[0]);
+
+    res.status(201).json(result.rows[0]);
+
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    console.error("Error creating user (transactional counter):", err.stack || err);
+    console.error("Error creating user:", err.stack);
     res.status(500).json({ error: "Internal server error" });
-  } finally {
-    client.release();
   }
 });
 
