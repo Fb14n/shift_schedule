@@ -364,7 +364,7 @@ app.post("/users", authenticateToken, async (req, res) => {
   try {
     const hashed = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO users (first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, first_name, last_name, employee_id, company_id, vacation_days, is_admin',
+      'INSERT INTO users (first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, first_name, last_name, employee_id, company_id, holidays, is_admin',
       [first_name, last_name, hashed, employee_id, company_id || null, holidays || 0, is_admin || false]
     );
     res.status(201).json(result.rows[0]);
@@ -386,7 +386,7 @@ app.put("/users/:id", authenticateToken, async (req, res) => {
     updates.password = await bcrypt.hash(updates.password, 10);
   }
 
-  for (const key of ['first_name', 'last_name', 'employee_id', 'company_id', 'password', 'vacation_days', 'is_admin']) {
+  for (const key of ['first_name', 'last_name', 'employee_id', 'company_id', 'password', 'holidays', 'is_admin']) {
     if (updates[key] !== undefined) {
       fields.push(`${key} = $${idx}`);
       values.push(updates[key]);

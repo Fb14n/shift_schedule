@@ -232,7 +232,7 @@ class ApiService {
     required String employeeId,
     required String password,
     int? companyId,
-    int? vacationDays,
+    int? holidays,
     bool? isAdmin,
   }) async {
     final token = await getToken();
@@ -248,7 +248,7 @@ class ApiService {
       'employee_id': employeeIdAsInt,
       'password': password,
       if (companyId != null) 'company_id': companyId,
-      if (vacationDays != null) 'vacation_days': vacationDays,
+      if (holidays != null) 'holidays': holidays,
       if (isAdmin != null) 'is_admin': isAdmin,
     };
 
@@ -258,7 +258,7 @@ class ApiService {
       body: jsonEncode(body),
     );
 
-    if (response.statusCode == 201) { // Nur auf 201 prüfen für "Created"
+    if (response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
       try {

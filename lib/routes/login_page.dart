@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
+import 'package:shift_schedule/ui/widgets/custom_text_field.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -165,6 +166,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextField(
                       controller: _employeeIdController,
                       cursorColor: CHRONOSTheme.onPrimary,
+                      keyboardType: TextInputType.number,
                       style: const TextStyle(color: CHRONOSTheme.onPrimary),
                       decoration: const InputDecoration(
                         labelText: 'Personalnummer',
