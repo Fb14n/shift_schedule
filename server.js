@@ -373,35 +373,29 @@ app.get("/users", authenticateToken, async (req, res) => {
 
 app.post("/users", authenticateToken, async (req, res) => {
   const { first_name, last_name, employee_id, password, company_id, holidays, is_admin } = req.body;
+
   if (!first_name || !last_name || employee_id === undefined || !password) {
     return res.status(400).json("Vorname, Nachname, Personalnummer und Passwort sind notwendig");
   }
-  const empId = Number(employee_id);
-  const compId = company_id === undefined ? null : company_id;
-
   try {
-    const existing = await pool.query('SELECT id, company_id FROM users WHERE employee_id = $1', [empId]);
-    if (existing.rows.length > 0) {
-      const existsInSameCompany = existing.rows.some(r => {
-        const existingCompany = r.company_id === null ? null : Number(r.company_id);
-        const newCompany = compId === null ? null : Number(compId);
-        return existingCompany === newCompany;
-      });
-      if (existsInSameCompany) {
-        return res.status(400).json('Benutzer mit dieser Mitarbeiter-ID existiert bereits in dieser Firma');
-      }
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE employee_id = $1 AND company_id = $2',
+      [employee_id, company_id || null]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json('Benutzer mit dieser Mitarbeiter-ID existiert bereits in dieser Firma');
     }
     const hashed = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, first_name, last_name, employee_id, company_id, holidays, is_admin',
-      [first_name, last_name, hashed, empId, compId || null, holidays || 0, is_admin || false]
+      [first_name, last_name, hashed, employee_id, company_id || null, holidays || 0, is_admin || false]
     );
+
     res.status(201).json(result.rows[0]);
+
   } catch (err) {
-    if (err && err.code === "23505") {
-      return res.status(400).json('Benutzer mit dieser Mitarbeiter-ID existiert bereits in dieser Firma');
-    }
-    console.error("Error creating user:", err && err.stack ? err.stack : err);
+    console.error("Error creating user:", err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 });
