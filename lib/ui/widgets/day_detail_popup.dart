@@ -99,15 +99,14 @@ class DayDetailPopup extends StatelessWidget {
                       if (showEditButton) IconButton(
                         icon: const Icon(Icons.edit),
                         tooltip: 'Schicht bearbeiten',
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.of(context).pop();
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            context.pushNamed('edit_shift', extra: {
-                              'shift': firstShift,
-                              'date': day.toIso8601String(),
-                              'user': user,
-                            });
+                          final res = await context.pushNamed('edit_shift', extra: {
+                            'shift': firstShift,
+                            'date': day.toIso8601String(),
+                            'user': user,
                           });
+                          if (res == true && onClose != null) onClose!();
                         },
                       ),
                       IconButton(

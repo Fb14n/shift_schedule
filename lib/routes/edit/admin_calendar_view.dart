@@ -158,7 +158,11 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
             showEditButton: true,
             day: selectedDay,
             shifts: shiftsForDay,
-            onClose: () {},
+            // Callback ruft die Ladefunktion auf, wenn onClose ausgelöst wird
+            onClose: () {
+              // neu laden (kann auch spezifischer _loadShifts() sein)
+              _loadAllData();
+            },
             user: widget.user,
           ),
         );
