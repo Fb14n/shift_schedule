@@ -131,3 +131,10 @@ windows
 shift_schedule.iml
 devtools_options.yaml
 todo
+assets/db
+.dockerignore
+docker-compose.yml
+Dockerfile
+dump_db.sh
+init-seed.sh
+update-seed.sh

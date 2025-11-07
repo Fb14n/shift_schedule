@@ -1,98 +1,61 @@
-# Shift Schedule - App zur Schichtplanung
+# CHRONOS — App zur Schichtplanung
 
-![Build & Release Flutter](https://github.com/fabianberger/shift_schedule/actions/workflows/release.yml/badge.svg)
+Willkommen — diese README gibt einen kompakten Überblick über das Projekt, wie man sich schnell einarbeitet und wie man lokal loslegt.
 
-Willkommen zum Shift Schedule Projekt! Dies ist eine mobile Anwendung, die mit Flutter entwickelt wurde, um die Verwaltung und Anzeige von Arbeitsschichten zu vereinfachen. Sie bietet eine übersichtliche Kalenderansicht, in der Benutzer ihre zugewiesenen Schichten (z. B. Früh-, Spät-, Nachtschicht) sowie Abwesenheiten wie Urlaub oder Krankheit einsehen können.
+## Kurzbeschreibung
+Chronos ist eine Flutter\-Mobile\-App zur
+Verwaltung und Anzeige von Arbeitsschichten und Abwesenheiten\. Die App spricht ein Backend an und nutzt eine PostgreSQL\-Datenbank\. Ziel ist schnelle Einsicht in Schichtpläne und einfache Administration durch Admin\-Funktionen\.
 
-## ✨ Features
+## Was im Repository wichtig ist
+- `lib/` — Flutter\-Quellcode (Einstieg: `lib/main.dart`, `lib/router.dart`)
+- `lib/services/` — API\-Clients und Service\-Logik
+- `lib/ui/` — Widgets, Screens, Themes
+- `android/`, `ios/` etc. — Plattform\-Projekte
+- `server.js` — einfaches lokales Backend (Node)
+- `docker-compose.yml` — Starten von Diensten (z\.B\. Postgres / pgAdmin)
+- `pubspec.yaml` / `package.json` — Abhängigkeiten für App / Node
 
-- **Dynamische Kalenderansicht:** Zeigt alle Schichten für den aktuellen Monat an.
-- **Farbcodierte Schichten:** Verschiedene Schicht-Typen sind zur besseren Übersicht farblich markiert.
-- **Benutzer-Login:** Sicherer Zugang zur App über ein Authentifizierungssystem.
-- **Admin-Funktionen:** Administratoren haben erweiterte Rechte (z. B. zur Verwaltung von Urlaubsanträgen).
-- **API-Anbindung:** Lädt die Schichtdaten von einer externen API.
-- **Automatisierte Releases:** Eine CI/CD-Pipeline erstellt und veröffentlicht bei jedem Push auf den `main`-Branch eine neue Android-APK.
+## Schnellüberblick
+1. Öffne `lib/main.dart` — Einstiegspunkt der App.
+2. Schau in `lib/services/` nach API\-Aufrufen (Suche nach `API_BASE_URL`).
+3. UI: `lib/ui/` enthält Screens und wiederverwendbare Widgets.
+4. Backend\-Studie: `server.js` zeigt API\-Endpunkte lokal; DB\-Schema und Seeds in `db/`\.
+5. Docker: `docker-compose.yml` startet PostgreSQL und pgAdmin für lokalen Test.
 
-## 🚀 Getting Started: Lokale Einrichtung
 
-Folge diesen Schritten, um das Projekt lokal aufzusetzen und auszuführen.
+## Delokal die App ausführen
 
-### Voraussetzungen
+1. App installieren \
+   -  `apk`-Datei auf dem Endgerät installieren 
 
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) (stabile Version)
-- Ein Code-Editor wie [VS Code](https://code.visualstudio.com/) oder [Android Studio](https://developer.android.com/studio)
-- [Docker](https://www.docker.com/get-started) (optional, nur für das lokale Backend)
+2. App öffnen und loslegen
 
-### Installation & Ausführung
+### Anmerkung zum delokalen Server (`render.com`)
 
-1.  **Repository klonen:**
-    ```sh
-    git clone <DEINE_REPO_URL>
-    cd shift_schedule
-    ```
+- Wenn die App mit dem delokalen Server betrieben wird, werden `server.js` und die Datenbank auf `render.com` gehostet.
+- `render.com` schaltet inaktive Webservices nach ca. 10 Minuten ohne Anfragen automatisch ab. Der erste Request danach kann länger dauern (bis zu etwa 1 Minute), weil der Service wieder hochfahren muss.
+- Es kann gelegentlich zu Verbindungsproblemen kommen. Falls Daten einmal nicht geladen werden, bitte die Seite per `Pull-to-Refresh` neu laden oder kurz warten und den Request erneut ausführen.
 
-2.  **Abhängigkeiten installieren:**
-    ```sh
-    flutter pub get
-    ```
+## Login 
+Es gibt zurzeit zwei unterschiedliche Firmen. Die Möglichkeit eine neue Firma zu registrieren gibt es derzeit noch nicht.  
+Anschließend werde ich die Login-Daten zweier Admins aufführen, damit Zugang zur App besteht.
 
-3.  **Umgebungsvariablen einrichten:**
-    Erstelle eine Datei namens `.env` im Stammverzeichnis des Projekts. Diese Datei wird von `main.dart` geladen, um Konfigurationen wie den API-Endpunkt zu verwalten. Füge den folgenden Inhalt hinzu und passe die Werte an:
+#### Chronos 
+    Personalnummer: 1001
+    Passwort: test123
 
-    ```env
-    # Beispiel für eine .env Datei
-    API_BASE_URL="http://deine-api-adresse.com/api"
-    ```
+#### Company GmbH
+    Personalnummer: 1011
+    Passwort: test
 
-4.  **App starten:**
-    Verbinde ein Gerät oder starte einen Emulator und führe den folgenden Befehl aus:
-    ```sh
-    flutter run
-    ```
+---
+### Hinweis zu Beispieldaten
 
-## ⚙️ Backend & Datenbank
+- Alle in der Datenbank enthaltenen Daten sind frei erfunden und dienen ausschließlich Demonstrations\- und Testzwecken.
+- Die Einträge stellen keine realen Personen, Unternehmen oder Ereignisse dar; Ähnlichkeiten sind rein zufällig.
+- Die Daten sind nicht realitätsnah und können Fehler oder Inkonsistenzen enthalten.
+- Verwende die Beispieldaten nicht für produktive Zwecke und speichere keine sensiblen oder echten Daten in der Demo\-Datenbank.
+- Angezeigte Login\-Daten und User-Profile sind Testkonten.
 
-Das Projekt ist für die Zusammenarbeit mit einem PostgreSQL-Backend konzipiert. Im `pgadmin/` Verzeichnis befindet sich eine Docker-Konfiguration, um eine pgAdmin-Instanz zu starten.
 
-Diese Konfiguration ist für das Deployment auf Plattformen wie [Render.com](https://render.com/) optimiert und erwartet, dass die Zugangsdaten als Umgebungsvariablen bereitgestellt werden.
 
-- `PGADMIN_DEFAULT_EMAIL`: E-Mail für den Admin-Login.
-- `PGADMIN_DEFAULT_PASSWORD`: Passwort für den Admin-Login.
-
-## 📦 Build & Release (CI/CD)
-
-Das Projekt verwendet GitHub Actions, um den Build- und Release-Prozess zu automatisieren.
-
-- **Workflow-Datei:** `.github/workflows/release.yml`
-- **Trigger:** Ein Push auf den `main`-Branch.
-
-**Der Prozess umfasst folgende Schritte:**
-
-1.  Einrichten der Java- und Flutter-Umgebung.
-2.  Aktualisieren der App-Abhängigkeiten (`flutter pub upgrade`).
-3.  Erstellen einer `app-release.apk`.
-4.  Automatisches Erstellen eines neuen Git-Tags (z. B. `v1`, `v2`, ...).
-5.  Erstellen eines neuen GitHub-Releases mit der generierten APK als Anhang.
-
-## 📂 Projektstruktur
-
-```
-.
-├── android/          # Natives Android-Projekt
-├── .github/          # GitHub Actions Workflows (CI/CD)
-├── lib/              # Haupt-Quellcode der Flutter-App
-│   ├── services/     # API-Anbindung
-│   ├── ui/           # Widgets, Screens und Themes
-│   ├── main.dart     # Einstiegspunkt der App
-│   └── router.dart   # Navigation und Routen-Management
-├── pgadmin/          # Docker-Konfiguration für pgAdmin
-└── pubspec.yaml      # Projekt-Metadaten und Abhängigkeiten
-```
-
-## 🤝 Contributing
-
-Pull Requests sind willkommen! Für größere Änderungen eröffne bitte zuerst ein Issue, um zu diskutieren, was du ändern möchtest. Stelle sicher, dass du alle Tests aktualisierst.
-
-## 📜 Lizenz
-
-Dieses Projekt steht unter der MIT-Lizenz. Weitere Informationen findest du in der `LICENSE`-Datei.
