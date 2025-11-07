@@ -3,9 +3,9 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
-import 'package:shift_schedule/ui/widgets/custom_text_field.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,11 +19,94 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final ApiService _apiService = ApiService();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final _formKey = GlobalKey<FormState>();
+
+  List<Map<String, dynamic>> _companies = [];
+  int? _selectedCompanyId;
+  bool _loadingCompanies = true;
 
   @override
   void initState() {
     super.initState();
     _checkLoginStatus();
+    _loadCompaniesFromApiOrEnv();
+  }
+
+  Future<void> _loadCompaniesFromApiOrEnv() async {
+    setState(() => _loadingCompanies = true);
+
+    List<Map<String, dynamic>> companiesFromApi = [];
+
+    try {
+      final apiResult = await _apiService.fetchCompanies();
+      companiesFromApi = List<Map<String, dynamic>>.from(apiResult);
+    } catch (e) {
+      log('fetchCompanies failed, trying public endpoint: $e', name: 'LoginPage');
+
+      try {
+        final publicResult = await _apiService.fetchPublicCompanies();
+        companiesFromApi = List<Map<String, dynamic>>.from(publicResult);
+      } catch (e2) {
+        log('fetchPublicCompanies failed: $e2', name: 'LoginPage');
+      }
+    }
+
+    final mappedFromApi = companiesFromApi.map((c) {
+      final id = c['id'] is int ? c['id'] as int : int.tryParse('${c['id']}');
+      String name;
+      if (id == 1) {
+        name = 'Chronos';
+      } else if (id == 2) {
+        name = 'Company GmbH';
+      } else {
+        name = (c['name'] ?? c['company_name'] ?? 'Firma ${c['id']}').toString();
+      }
+      return {'id': id, 'name': name};
+    }).where((m) => m['id'] != null).toList();
+
+    if (mappedFromApi.isNotEmpty) {
+      setState(() {
+        _companies = mappedFromApi;
+        _selectedCompanyId = _companies.first['id'] as int?;
+        _loadingCompanies = false;
+      });
+      return;
+    }
+
+    final raw = dotenv.env['COMPANIES'];
+    if (raw != null && raw.trim().isNotEmpty) {
+      final parts = raw.split(',');
+      final parsed = parts.map((p) {
+        final kv = p.split(':');
+        final id = int.tryParse(kv[0].trim());
+        String name;
+        if (id == 1) {
+          name = 'Chronos';
+        } else if (id == 2) {
+          name = 'Company GmbH';
+        } else {
+          name = kv.length > 1 ? kv.sublist(1).join(':').trim() : 'Firma ${kv[0].trim()}';
+        }
+        return {'id': id, 'name': name};
+      }).where((m) => m['id'] != null).toList();
+
+      if (parsed.isNotEmpty) {
+        setState(() {
+          _companies = parsed;
+          _selectedCompanyId = _companies.first['id'] as int?;
+          _loadingCompanies = false;
+        });
+        return;
+      }
+    }
+    setState(() {
+      _companies = [
+        {'id': 1, 'name': 'Chronos'},
+        {'id': 2, 'name': 'Company GmbH'},
+      ];
+      _selectedCompanyId = _companies.first['id'] as int?;
+      _loadingCompanies = false;
+    });
   }
 
   Future<void> _checkLoginStatus() async {
@@ -42,10 +125,13 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
     try {
       final token = await _apiService.login(
         _employeeIdController.text,
         _passwordController.text,
+        companyId: _selectedCompanyId,
       );
       final expiryDate = DateTime.now().add(const Duration(hours: 2));
       await _secureStorage.write(key: 'auth_token', value: token);
@@ -54,7 +140,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       log('Login failed: ${e}', name: 'LoginPage');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
+        SnackBar(content: Text('$e'), backgroundColor: CHRONOSTheme.error),
       );
     }
   }
@@ -77,18 +163,39 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 TextFormField(
                   controller: usernameController,
-                  decoration: const InputDecoration(labelText: 'Benutzername (Vorname)'),
+                  cursorColor: CHRONOSTheme.secondary,
+                  decoration: const InputDecoration(
+                    floatingLabelStyle: TextStyle(color: CHRONOSTheme.secondary),
+                    labelText: 'Benutzername (Vorname)',
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: CHRONOSTheme.secondary),
+                    ),
+                  ),
                   validator: (value) => value!.isEmpty ? 'Bitte Benutzernamen eingeben' : null,
                 ),
                 TextFormField(
                   controller: employeeIdController,
-                  decoration: const InputDecoration(labelText: 'Personalnummer'),
+                  cursorColor: CHRONOSTheme.secondary,
+                  decoration: const InputDecoration(
+                    floatingLabelStyle: TextStyle(color: CHRONOSTheme.secondary),
+                    labelText: 'Personalnummer',
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: CHRONOSTheme.secondary),
+                    ),
+                  ),
                   keyboardType: TextInputType.number,
                   validator: (value) => value!.isEmpty ? 'Bitte Personalnummer eingeben' : null,
                 ),
                 TextFormField(
                   controller: newPasswordController,
-                  decoration: const InputDecoration(labelText: 'Neues Passwort'),
+                  cursorColor: CHRONOSTheme.secondary,
+                  decoration: const InputDecoration(
+                    floatingLabelStyle: TextStyle(color: CHRONOSTheme.secondary),
+                    labelText: 'Neues Passwort',
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: CHRONOSTheme.secondary),
+                    ),
+                  ),
                   obscureText: true,
                   validator: (value) => value!.isEmpty ? 'Bitte neues Passwort eingeben' : null,
                 ),
@@ -98,7 +205,7 @@ class _LoginPageState extends State<LoginPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Abbrechen'),
+              child: const Text('Abbrechen', style: TextStyle(color: CHRONOSTheme.secondary)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -137,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                   );
                 }
               },
-              child: const Text('Zurücksetzen'),
+              child: const Text('Zurücksetzen', style: TextStyle(color: CHRONOSTheme.secondary)),
             ),
           ],
         );
@@ -160,64 +267,93 @@ class _LoginPageState extends State<LoginPage> {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: _employeeIdController,
-                      cursorColor: CHRONOSTheme.onPrimary,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: CHRONOSTheme.onPrimary),
-                      decoration: const InputDecoration(
-                        labelText: 'Personalnummer',
-                        labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_loadingCompanies)
+                        const SizedBox(height: 56, child: Center(child: CircularProgressIndicator()))
+                      else
+                        DropdownButtonFormField<int>(
+                          initialValue: _selectedCompanyId,
+                          dropdownColor: CHRONOSTheme.primary,
+                          decoration: const InputDecoration(
+                            labelText: 'Firma',
+                            labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
+                            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: CHRONOSTheme.onPrimary)),
+                          ),
+                          items: _companies.map((c) {
+                            final id = c['id']?.toString() ?? '';
+                            final name = c['name']?.toString() ?? 'Firma';
+                            final display = id.isNotEmpty ? name : name;
+                            return DropdownMenuItem<int>(
+                              value: c['id'] as int?,
+                              child: Text(display, style: const TextStyle(color: CHRONOSTheme.onPrimary)),
+                            );
+                          }).toList(),
+                          onChanged: (v) => setState(() => _selectedCompanyId = v),
+                          validator: (v) => v == null ? 'Bitte Firma auswählen' : null,
                         ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _employeeIdController,
+                        cursorColor: CHRONOSTheme.onPrimary,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(color: CHRONOSTheme.onPrimary),
+                        decoration: const InputDecoration(
+                          labelText: 'Personalnummer',
+                          labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                          ),
+                        ),
+                        validator: (v) => v == null || v.isEmpty ? 'Bitte Personalnummer eingeben' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _passwordController,
+                        cursorColor: CHRONOSTheme.onPrimary,
+                        style: const TextStyle(color: CHRONOSTheme.onPrimary),
+                        decoration: const InputDecoration(
+                          labelText: 'Passwort',
+                          labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                          ),
+                        ),
+                        obscureText: true,
+                        validator: (v) => v == null || v.isEmpty ? 'Bitte Passwort eingeben' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: CHRONOSTheme.onPrimary,
+                            foregroundColor: CHRONOSTheme.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text('Login'),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _passwordController,
-                      cursorColor: CHRONOSTheme.onPrimary,
-                      style: const TextStyle(color: CHRONOSTheme.onPrimary),
-                      decoration: const InputDecoration(
-                        labelText: 'Passwort',
-                        labelStyle: TextStyle(color: CHRONOSTheme.onPrimary),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: CHRONOSTheme.onPrimary),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: _showForgotPasswordDialog,
+                        child: const Text(
+                          'Passwort vergessen?',
+                          style: TextStyle(color: CHRONOSTheme.onPrimary),
                         ),
                       ),
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: CHRONOSTheme.onPrimary,
-                          foregroundColor: CHRONOSTheme.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text('Login'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: _showForgotPasswordDialog,
-                      child: const Text(
-                        'Passwort vergessen?',
-                        style: TextStyle(color: CHRONOSTheme.onPrimary),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

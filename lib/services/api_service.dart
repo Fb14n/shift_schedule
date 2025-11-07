@@ -13,12 +13,36 @@ class ApiService {
   static const String _keyRefresh = 'refresh_token';
   static const String _keyExpiry = 'token_expiry';
 
-  Future<String> login(String employeeId, String password) async {
+    Future<List<Map<String, dynamic>>> fetchPublicCompanies() async {
+    final base = baseUrl ?? dotenv.env['BASE_URL'] ?? '';
+    if (base.isEmpty) throw ExceptionToString('BASE_URL nicht konfiguriert');
+
+    try {
+      final response = await http.get(Uri.parse('$base/companies'));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(decoded);
+      } else {
+        throw ExceptionToString('Fehler beim Laden der Firmen: ${response.statusCode}');
+      }
+    } catch (e) {
+      log('fetchPublicCompanies error: $e', name: 'ApiService');
+      rethrow;
+    }
+  }
+
+  Future<String> login(String employeeId, String password, {int? companyId}) async {
     log('API-Base-Url: ${dotenv.env['BASE_URL']}', name: 'ApiService');
+    final body = {
+      'employee_id': employeeId,
+      'password': password,
+      if (companyId != null) 'company_id': companyId,
+    };
+
     final response = await http.post(
       Uri.parse('${baseUrl ?? ''}/login'),
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({'employee_id': employeeId, 'password': password}),
+      body: json.encode(body),
     );
 
     if (response.statusCode == 200) {

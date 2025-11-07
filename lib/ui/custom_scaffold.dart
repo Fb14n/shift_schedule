@@ -121,7 +121,7 @@ class _CustomScaffoldState extends State<CustomScaffold> {
             final firstName = userDetails['first_name'] ?? 'Unbekannt';
             final lastName = userDetails['last_name'] ?? '';
             final employeeId = userDetails['employee_id']?.toString() ?? 'Keine ID';
-            final vacationDays = userDetails['vacation_days'] ?? 0;
+            final vacationDays = userDetails['vacation_days'] ?? 30;
             final sickDays = userDetails['sick_days'] ?? 0;
 
             return Column(
