@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
@@ -11,7 +12,6 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:shift_schedule/ui/widgets/day_detail_popup.dart';
 import 'package:shift_schedule/utils/get_color_contrast.dart';
 
-import 'edit_shift_page.dart';
 
 class AdminCalendarView extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -39,9 +39,12 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
   Map<String, Color> _shiftColors = {};
   Map<String, Color> _shiftTextColors = {};
 
+  late Map<String, dynamic> _user;
+
   @override
   void initState() {
     super.initState();
+    _user = Map<String, dynamic>.from(widget.user);
     _updateNavigationButtons();
     _loadAllData(showLoadingScreen: true);
   }
@@ -111,7 +114,7 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
 
   Future<void> _loadShifts() async {
     try {
-      final userId = widget.user['id'] as int?;
+      final userId = _user['id'] as int?;
       if (userId == null) {
         log('User-ID not found in widget data', name: 'AdminCalendarView');
         if (mounted) setState(() => _isLoading = false);
@@ -158,12 +161,10 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
             showEditButton: true,
             day: selectedDay,
             shifts: shiftsForDay,
-            // Callback ruft die Ladefunktion auf, wenn onClose ausgelöst wird
             onClose: () {
-              // neu laden (kann auch spezifischer _loadShifts() sein)
               _loadAllData();
             },
-            user: widget.user,
+            user: _user,
           ),
         );
       },
@@ -181,29 +182,50 @@ class _AdminCalendarViewState extends State<AdminCalendarView> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return CustomScaffold(
-        title: Text('Lade Kalender: ${widget.user['last_name'] ?? 'Mitarbeiter'}'),
-        body: const Column(
-            children: [
-              SizedBox(height: 20),
-              Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary))
-            ])
+          title: Text('Lade Kalender: ${_user['last_name'] ?? 'Mitarbeiter'}'),
+          body: const Column(
+              children: [
+                SizedBox(height: 20),
+                Center(child: CircularProgressIndicator(color: CHRONOSTheme.secondary))
+              ])
       );
     }
-    final isCurrentMonth = _focusedDay.year == DateTime.now().year && _focusedDay.month == DateTime.now().month;
-    final userName = '${widget.user['first_name'] ?? ''} ${widget.user['last_name'] ?? ''}';
-
+    final userName = '${_user['first_name'] ?? ''} ${_user['last_name'] ?? ''}';
     return CustomScaffold(
-      floatingActionButton: CustomFloatingActionButton(
-        heroTag: 'todayButton',
-        tooltip: 'Zum aktuellen Monat springen',
-        icon: Symbols.today_rounded,
-        onPressed: () {
-          setState(() {
-            _focusedDay = DateTime.now();
-            _updateNavigationButtons();
-          });
+      trailingIcon: IconButton(
+        icon: const Icon(Symbols.edit_rounded),
+        onPressed: () async {
+          final res = await context.pushNamed('edit_user', extra: _user);
+          if (res is Map<String, dynamic>) {
+            setState(() {
+              _user = Map<String, dynamic>.from(res);
+            });
+            await _loadAllData(showLoadingScreen: false);
+          } else if (res == true) {
+            await _loadAllData(showLoadingScreen: false);
+          }
         },
-        visible: !isCurrentMonth,
+      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          CustomFloatingActionButton(
+            heroTag: 'editTodayButton',
+            tooltip: 'Schicht für heute bearbeiten/anlegen',
+            icon: Symbols.edit_calendar_rounded,
+            onPressed: () async {
+              final res = await context.pushNamed('edit_shift', extra: {
+                'date': DateTime.now().toIso8601String(),
+                'user': _user,
+              });
+              if(res == true) {
+                await _loadAllData(showLoadingScreen: false);
+              }
+            },
+            visible: true,
+          ),
+        ],
       ),
       title: Text(userName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       onRefresh: _loadAllData,

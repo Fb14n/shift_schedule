@@ -9,6 +9,7 @@ class CHRONOSColors extends ThemeExtension<CHRONOSColors> {
   Color operator [](String key) => _colors[key]!;
 
   Color get popUpBackground => _colors['popUpBackground']!;
+  Color get cardColor => _colors['cardColor']!;
   Color get borderColorDefault => _colors['borderColorDefault']!;
   Color get popUpShadow => _colors['popUpShadow']!;
   Color get onBackground => _colors['onBackground']!;
@@ -28,9 +29,9 @@ class CHRONOSColors extends ThemeExtension<CHRONOSColors> {
     return CHRONOSColors(lerped);
   }
 
-  // === Light & Dark Map ===
   static final light = CHRONOSColors({
     'popUpBackground': Colors.white,
+    'cardColor': Colors.white,
     'popUpShadow': Colors.white,
     'borderColorDefault': Colors.black,
     'onBackground': Colors.black,
@@ -39,6 +40,7 @@ class CHRONOSColors extends ThemeExtension<CHRONOSColors> {
 
   static final dark = CHRONOSColors({
     'popUpBackground': Colors.black,
+    'cardColor': Colors.white10,
     'popUpShadow': Colors.white,
     'borderColorDefault': Colors.white,
     'onBackground': Colors.white,

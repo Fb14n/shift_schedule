@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -270,19 +271,38 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> updateUser(int id, Map<String, dynamic> updates) async {
+  Future<Map<String, dynamic>> updateUser(Map<String, dynamic> updates, {int? id}) async {
     final token = await getToken();
     if (token == null) throw ExceptionToString('Kein Token gefunden');
-    final response = await http.put(Uri.parse('$baseUrl/users/$id'),
+
+    final int userId = await _resolveUserId(id);
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/$userId'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode(updates),
     );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return <String, dynamic>{};
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return <String, dynamic>{};
     } else {
       throw ExceptionToString('Fehler beim Aktualisieren des Benutzers: ${response.body}');
     }
   }
+
+  Future<int> _resolveUserId(int? id) async {
+    if (id != null) return id;
+    final details = await fetchUserDetails();
+    final raw = details['id'];
+    if (raw is int) return raw;
+    final parsed = int.tryParse('$raw');
+    if (parsed != null) return parsed;
+    throw ExceptionToString('Benutzer-ID nicht verfügbar');
+  }
+
 
   Future<Map<String, dynamic>> createCompany({ required String name, String? address }) async {
     final token = await getToken();

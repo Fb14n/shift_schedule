@@ -4,6 +4,7 @@ import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shift_schedule/ui/widgets/admin_badge.dart';
 import 'package:shift_schedule/utils/toggle_theme.dart';
 
 
@@ -11,19 +12,20 @@ class CustomScaffold extends StatefulWidget {
   final Widget? body;
   final Widget? title;
   final Future<void> Function()? onRefresh;
-  final bool showEditButton;
+  final bool showEditCalendarButton;
   final bool showSettingsButton;
   final Widget? floatingActionButton;
+  final Widget? trailingIcon;
 
   const CustomScaffold({
     super.key,
     this.body,
     this.title,
     this.onRefresh,
-    this.showEditButton = false,
+    this.showEditCalendarButton = false,
     this.showSettingsButton = false,
     this.floatingActionButton,
-
+    this.trailingIcon,
   });
 
   @override
@@ -42,7 +44,6 @@ class _CustomScaffoldState extends State<CustomScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final String? currentRoute = GoRouterState.of(context).name;
     final bool canPop = context.canPop();
     final themeMode = ThemeManager.themeModeNotifier.value;
     final String logoAsset = Theme.of(context).brightness == Brightness.light
@@ -55,7 +56,7 @@ class _CustomScaffoldState extends State<CustomScaffold> {
         title: widget.title ?? SvgPicture.asset(logoAsset, height: 40),
         leading: canPop
             ? IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Symbols.arrow_back),
           onPressed: () => context.pop(),
         )
             : Builder(
@@ -83,21 +84,17 @@ class _CustomScaffoldState extends State<CustomScaffold> {
               }
               final isAdmin = snapshot.hasData && snapshot.data?['is_admin'] == true;
               if (!isAdmin) return const SizedBox.shrink();
-              if (!widget.showEditButton) return const SizedBox.shrink();
+              if (!widget.showEditCalendarButton) return const SizedBox.shrink();
               return IconButton(
                 tooltip: 'Editieren',
-                icon: const Icon(Icons.edit),
+                icon: const Icon(Symbols.edit_rounded),
                 onPressed: () {
                   context.pushNamed('user_list');
                 },
               );
             },
           ),
-          if (widget.showSettingsButton)
-            IconButton(
-              icon: const Icon(Symbols.settings_rounded),
-              onPressed: () => context.pushNamed('settings'),
-            ),
+          ?widget.trailingIcon,
         ],
       ),
       drawer: Drawer(
@@ -123,8 +120,7 @@ class _CustomScaffoldState extends State<CustomScaffold> {
             final userDetails = snapshot.data!;
             final firstName = userDetails['first_name'] ?? 'Unbekannt';
             final lastName = userDetails['last_name'] ?? '';
-            final employeeId =
-                userDetails['employee_id']?.toString() ?? 'Keine ID';
+            final employeeId = userDetails['employee_id']?.toString() ?? 'Keine ID';
             final vacationDays = userDetails['vacation_days'] ?? 0;
             final sickDays = userDetails['sick_days'] ?? 0;
 
@@ -135,13 +131,26 @@ class _CustomScaffoldState extends State<CustomScaffold> {
                     padding: EdgeInsets.zero,
                     children: [
                       UserAccountsDrawerHeader(
-                        accountName: Text(
-                          '$firstName $lastName',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: CHRONOSTheme.onPrimary,
-                          ),
+                        accountName: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '$firstName $lastName',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: CHRONOSTheme.onPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (userDetails['is_admin'] == true) ...[
+                              const SizedBox(width: 6),
+                              const AdminBadge(height: 20),
+                            ],
+                          ],
                         ),
                         accountEmail: Text(
                           'Mitarbeiter-ID: $employeeId',

@@ -1,4 +1,5 @@
 import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -6,6 +7,8 @@ import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/utils/toggle_theme.dart';
+import 'package:shift_schedule/ui/widgets/admin_badge.dart';
+
 
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
@@ -327,6 +330,7 @@ class _SettingsViewState extends State<SettingsView> {
         final employeeId = user['employee_id']?.toString() ?? 'Keine ID';
 
         return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
               radius: 40,
@@ -334,22 +338,41 @@ class _SettingsViewState extends State<SettingsView> {
               child: Text(
                 firstName.isNotEmpty ? firstName[0] : '?',
                 style: const TextStyle(
-                    fontSize: 40.0,
-                    fontWeight: FontWeight.bold,
-                    color: CHRONOSTheme.onPrimary),
+                  fontSize: 40.0,
+                  fontWeight: FontWeight.bold,
+                  color: CHRONOSTheme.onPrimary,
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              '$firstName $lastName',
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    '$firstName $lastName',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (user['is_admin'] == true) ...[
+                  const SizedBox(width: 6),
+                  const AdminBadge(height: 20),
+                ],
+              ],
             ),
-            const SizedBox(height: 4),
+
+            const SizedBox(height: 8),
             Text(
               'Mitarbeiter-ID: $employeeId',
               style: TextStyle(
-                  fontSize: 16,
-                  color: CHRONOSTheme.of(context).onBackgroundLight),
+                fontSize: 16,
+                color: CHRONOSTheme.of(context).onBackgroundLight,
+              ),
             ),
           ],
         );
@@ -386,7 +409,7 @@ class _SettingsViewState extends State<SettingsView> {
           leading: const Icon(Symbols.lock_reset),
           title: const Text('Passwort ändern'),
           onTap: _showVerifyOldPasswordDialog,
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          trailing: const Icon(Symbols.arrow_forward_ios, size: 16),
         ),
         const Divider(),
         ListTile(

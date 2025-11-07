@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/utils/get_color_contrast.dart';
 import 'day_timeline.dart';
@@ -56,6 +57,9 @@ class DayDetailPopup extends StatelessWidget {
     }).toList();
 
     final Map<String, dynamic>? firstShift = shifts.isNotEmpty ? shifts[0] : null;
+    final now = DateTime.now();
+    final todayOnly = DateTime(now.year, now.month, now.day);
+    final isPast = DateTime(day.year, day.month, day.day).isBefore(todayOnly);
 
     return GestureDetector(
       onTap: () {
@@ -96,21 +100,27 @@ class DayDetailPopup extends StatelessWidget {
                               )
                           )
                       ),
-                      if (showEditButton) IconButton(
-                        icon: const Icon(Icons.edit),
-                        tooltip: 'Schicht bearbeiten',
-                        onPressed: () async {
-                          Navigator.of(context).pop();
-                          final res = await context.pushNamed('edit_shift', extra: {
-                            'shift': firstShift,
-                            'date': day.toIso8601String(),
-                            'user': user,
-                          });
-                          if (res == true && onClose != null) onClose!();
-                        },
-                      ),
+                      if (showEditButton)
+                        IconButton(
+                          icon: const Icon(Symbols.edit_rounded),
+                          tooltip: isPast
+                              ? 'Vergangene Schichten können nicht bearbeitet werden'
+                              : 'Schicht bearbeiten',
+                          onPressed: isPast
+                              ? null
+                              : () async {
+                            Navigator.of(context).pop();
+                            final res = await context.pushNamed('edit_shift', extra: {
+                              'shift': firstShift,
+                              'date': day.toIso8601String(),
+                              'user': user,
+                            });
+                            if (res == true && onClose != null) onClose!();
+                          },
+                          color: isPast ? Theme.of(context).disabledColor : null,
+                        ),
                       IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: const Icon(Symbols.close_rounded),
                         onPressed: () {
                           Navigator.of(context).pop();
                           if (onClose != null) onClose!();

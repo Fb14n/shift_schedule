@@ -5,6 +5,7 @@ import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
 import 'package:shift_schedule/ui/themes/theme.dart';
 import 'package:shift_schedule/ui/widgets/floating_action_button.dart';
+import 'package:shift_schedule/ui/widgets/admin_badge.dart';
 
 class UserListPage extends StatefulWidget {
   const UserListPage({super.key});
@@ -127,7 +128,24 @@ class _UserListPageState extends State<UserListPage> {
           final name = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}';
           final emp = u['employee_id']?.toString() ?? '';
           return ListTile(
-            title: Text(name),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (u['is_admin'] == true) ...[
+                  const SizedBox(width: 6),
+                  const AdminBadge(height: 15, fontSize: 8),
+                ],
+              ],
+            ),
             subtitle: Text('ID: $emp'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {

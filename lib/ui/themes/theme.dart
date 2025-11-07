@@ -5,6 +5,7 @@ class CHRONOSTheme {
   static const Color primary = Color(0xFF174165);
   static const Color onPrimary = Colors.white;
   static const Color secondary = Color(0xFF305CA3);
+  static const Color secondaryLight = Color(0xFF6B93ED);
   static const Color onSecondary = Colors.white;
   static const Color error = Colors.red;
   static const Color onError = Colors.white;

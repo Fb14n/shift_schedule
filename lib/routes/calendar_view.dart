@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:shift_schedule/services/api_service.dart';
 import 'package:shift_schedule/ui/custom_scaffold.dart';
@@ -187,8 +188,11 @@ class _CalendarViewState extends State<CalendarView> {
         },
         visible: !isCurrentMonth,
       ),
-      showEditButton: true,
-      showSettingsButton: true,
+      showEditCalendarButton: true,
+      trailingIcon: IconButton(
+        icon: const Icon(Symbols.settings_rounded),
+        onPressed: () => context.pushNamed('settings'),
+      ),
       onRefresh: _loadAllData,
       body: Padding(
         padding: const EdgeInsets.all(10),
