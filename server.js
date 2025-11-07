@@ -1,3 +1,4 @@
+import express from "express";
 import pkg from "pg";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
@@ -229,55 +230,18 @@ app.get("/shifts/all", authenticateToken, async (req, res) => {
 });
 
 app.post("/shifts", authenticateToken, async (req, res) => {
+  const { user_id, shift_date, shift_type_id } = req.body;
+  if (!user_id || !shift_date || !shift_type_id) {
+    return res.status(400).json({ error: "user_id, shift_date and shift_type_id are required" });
+  }
   try {
-    console.log("POST /shifts body:", req.body);
-    const { user_id, shift_date, shift_type_id } = req.body;
-
-    if (user_id === undefined || shift_date === undefined || shift_type_id === undefined) {
-      return res.status(400).json({ error: "user_id, shift_date und shift_type_id sind erforderlich" });
-    }
-
-    const userIdNum = Number(user_id);
-    const shiftTypeIdNum = Number(shift_type_id);
-
-    if (!Number.isFinite(userIdNum) || !Number.isFinite(shiftTypeIdNum)) {
-      return res.status(400).json({ error: "user_id und shift_type_id müssen Zahlen sein" });
-    }
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(shift_date)) {
-      return res.status(400).json({ error: "shift_date muss im Format YYYY-MM-DD sein" });
-    }
-
-    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userIdNum]);
-    if (userCheck.rows.length === 0) {
-      return res.status(400).json({ error: "User mit dieser id existiert nicht" });
-    }
-
-    const typeCheck = await pool.query('SELECT id FROM shift_types WHERE id = $1', [shiftTypeIdNum]);
-    if (typeCheck.rows.length === 0) {
-      return res.status(400).json({ error: "Shift type mit dieser id existiert nicht" });
-    }
-
     const result = await pool.query(
       'INSERT INTO shifts (user_id, shift_date, shift_type_id) VALUES ($1, $2, $3) RETURNING *',
-      [userIdNum, shift_date, shiftTypeIdNum]
+      [user_id, shift_date, shift_type_id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error("Error creating shift:", err.stack || err);
-
-    if (err && err.code) {
-      if (err.code === '23503') {
-        return res.status(400).json({ error: "Referentielle Integrität verletzt (user_id oder shift_type_id ist ungültig)" });
-      }
-      if (err.code === '22P02') {
-        return res.status(400).json({ error: "Ungültige Eingabe: Datentypen falsch" });
-      }
-      if (err.code === '23502') {
-        return res.status(400).json({ error: `Not-null violation: ${err.column || 'unknown column'}` });
-      }
-    }
-
+    console.error("Error creating shift:", err.stack);
     res.status(500).json({ error: "Internal server error" });
   }
 });
