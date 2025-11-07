@@ -56,6 +56,7 @@ Anschließend werde ich die Login-Daten zweier Admins aufführen, damit Zugang z
 - Die Daten sind nicht realitätsnah und können Fehler oder Inkonsistenzen enthalten.
 - Verwende die Beispieldaten nicht für produktive Zwecke und speichere keine sensiblen oder echten Daten in der Demo\-Datenbank.
 - Angezeigte Login\-Daten und User-Profile sind Testkonten.
+- Nicht alle User enthalten bereit Schichten. 
 
 
 
