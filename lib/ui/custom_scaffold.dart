@@ -68,14 +68,14 @@ class _CustomScaffoldState extends State<CustomScaffold> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              themeMode == ThemeMode.light
-                  ? Symbols.dark_mode
-                  : Symbols.light_mode,
-            ),
-            onPressed: ThemeManager.toggleTheme,
-          ),
+          // IconButton(
+          //   icon: Icon(
+          //     themeMode == ThemeMode.light
+          //         ? Symbols.dark_mode
+          //         : Symbols.light_mode,
+          //   ),
+          //   onPressed: ThemeManager.toggleTheme,
+          // ),
           FutureBuilder<Map<String, dynamic>>(
             future: _userDetailsFuture,
             builder: (context, snapshot) {
