@@ -3,7 +3,6 @@
       export $(cat .env | sed 's/#.*//g' | xargs)
     fi
 
-    # --- Konfiguration ---
     OUTPUT_FILE="assets/db/seed1.sql"
 
     DB_USER='shift_schedule_db_user'
@@ -43,27 +42,20 @@
 
     unset PGPASSWORD
 
-    echo "🔧 Patche Schema (IF NOT EXISTS)..."
+    echo "🔧 Patche Schema zu 'IF NOT EXISTS'..."
 
-    # CREATE TABLE → CREATE TABLE IF NOT EXISTS
+    # CREATE TABLE -> CREATE TABLE IF NOT EXISTS
     sed -i 's/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g' "$TEMP_SCHEMA"
 
-    # CREATE SEQUENCE → CREATE SEQUENCE IF NOT EXISTS
+    # Sequences safe machen
     sed -i 's/CREATE SEQUENCE /CREATE SEQUENCE IF NOT EXISTS /g' "$TEMP_SCHEMA"
 
-    # ALTER TABLE ADD CONSTRAINT → ADD CONSTRAINT IF NOT EXISTS
-    sed -i -E 's/ADD CONSTRAINT ([a-zA-Z0-9_]+)/ADD CONSTRAINT \1 IF NOT EXISTS/g' "$TEMP_SCHEMA"
+    # ALTER TABLE ADD CONSTRAINT – safe Version:
+    sed -i 's/ADD CONSTRAINT \([a-zA-Z0-9_]*\) /ADD CONSTRAINT \1 IF NOT EXISTS /g' "$TEMP_SCHEMA"
 
-    echo "🔧 Patche INSERTs (ON CONFLICT DO NOTHING + Spaltennamen in \"...\")..."
+    echo "🔧 Patche INSERTs (ON CONFLICT DO NOTHING)..."
 
-    # ON CONFLICT DO NOTHING
     sed -i 's/);$/) ON CONFLICT DO NOTHING;/g' "$TEMP_DATA"
-
-    # Spaltenliste in doppelte Anführungszeichen setzen
-    # Beispiel:
-    # (id, type_name) → ("id", "type_name")
-    sed -i -E 's/INSERT INTO ([^(]+)\(([a-zA-Z0-9_ ,]+)\)/INSERT INTO \1(\2)/' "$TEMP_DATA"
-    sed -i -E 's/([ (])([a-zA-Z_][a-zA-Z0-9_]*)([, )])/\1"\2"\3/g' "$TEMP_DATA"
 
     echo "🔧 Baue finale Seed-Datei..."
 
@@ -78,7 +70,18 @@
 
     sed -i '/^\\restrict/d' "$OUTPUT_FILE"
     sed -i '/^\\unrestrict/d' "$OUTPUT_FILE"
+    # 1) Entferne fälschliche "ON CONFLICT DO NOTHING" in SELECT-Zeilen
+    sed -i "/^[[:space:]]*SELECT[[:space:]]/ s/ ON CONFLICT DO NOTHING//g" "$OUTPUT_FILE"
 
+    # 2) Füge "ON CONFLICT DO NOTHING" nur bei INSERT-Zeilen hinzu, die es noch nicht haben
+    awk '{
+      if ($0 ~ /^[[:space:]]*INSERT[[:space:]]+INTO/ && $0 !~ /ON CONFLICT DO NOTHING/) {
+        sub(/;[[:space:]]*$/, " ON CONFLICT DO NOTHING;");
+      }
+      print
+    }' "$OUTPUT_FILE" > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
     rm "$TEMP_SCHEMA" "$TEMP_DATA"
+
+
 
     echo "✅ Fertig! Seed-Datei erstellt: $OUTPUT_FILE"
