@@ -4,7 +4,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict dPUE91HJUWzKJdeCnqoZLI45PqkkeHPUrw5bKlFqhBdRpqVLo97jvxLKGcJ8lYc
 
 -- Dumped from database version 17.6 (Debian 17.6-2.pgdg12+1)
 -- Dumped by pg_dump version 17.6
@@ -232,7 +231,6 @@ ALTER TABLE ONLY public.shifts
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dPUE91HJUWzKJdeCnqoZLI45PqkkeHPUrw5bKlFqhBdRpqVLo97jvxLKGcJ8lYc
 
 
 -- Daten (nur fehlende Zeilen werden eingefügt):
@@ -240,7 +238,6 @@ ALTER TABLE ONLY public.shifts
 -- "PostgreSQL" database dump
 --
 
-\restrict x65L5tG95h0GkdHXwoJM9gCP4uHLaPUjbB87RRpshxkpxlzO5df7a3sVjEHw3Cq
 
 -- "Dumped" from "database" version 17.6 ("Debian" 17.6-2.pgdg12+1)
 -- "Dumped" by "pg_dump" version 17.6
@@ -1353,5 +1350,4 @@ SELECT pg_catalog.setval('public.users_id_seq', 50, "true") "ON" CONFLICT "DO" N
 -- "PostgreSQL" database "dump" complete
 --
 
-\unrestrict x65L5tG95h0GkdHXwoJM9gCP4uHLaPUjbB87RRpshxkpxlzO5df7a3sVjEHw3Cq
 

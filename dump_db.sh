@@ -76,6 +76,9 @@
       cat "$TEMP_DATA"
     } > "$OUTPUT_FILE"
 
+    sed -i '/^\\restrict/d' "$OUTPUT_FILE"
+    sed -i '/^\\unrestrict/d' "$OUTPUT_FILE"
+
     rm "$TEMP_SCHEMA" "$TEMP_DATA"
 
     echo "✅ Fertig! Seed-Datei erstellt: $OUTPUT_FILE"
