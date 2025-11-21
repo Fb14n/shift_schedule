@@ -1,12 +1,3 @@
--- SAFE SEED FILE (IDEMPOTENT)
--- Struktur (nur wenn nicht vorhanden):
---
--- PostgreSQL database dump
---
-
-
--- Dumped from database version 17.6 (Debian 17.6-2.pgdg12+1)
--- Dumped by pg_dump version 17.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -20,31 +11,15 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: companies; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE IF NOT EXISTS public.companies (
     id integer,
     name character varying(100),
     holidays_default integer
 );
-
-
---
--- Name: shift_types; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE IF NOT EXISTS public.shift_types (
     id integer NOT NULL,
@@ -54,11 +29,6 @@ CREATE TABLE IF NOT EXISTS public.shift_types (
     type_time_end time without time zone
 );
 
-
---
--- Name: shift_types_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE IF NOT EXISTS public.shift_types_id_seq
     AS integer
     START WITH 1
@@ -67,17 +37,7 @@ CREATE SEQUENCE IF NOT EXISTS public.shift_types_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
---
--- Name: shift_types_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.shift_types_id_seq OWNED BY public.shift_types.id;
-
-
---
--- Name: shifts; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE IF NOT EXISTS public.shifts (
     id integer NOT NULL,
@@ -85,11 +45,6 @@ CREATE TABLE IF NOT EXISTS public.shifts (
     shift_type_id integer NOT NULL,
     user_id integer NOT NULL
 );
-
-
---
--- Name: shifts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
 
 CREATE SEQUENCE IF NOT EXISTS public.shifts_id_seq
     AS integer
@@ -99,17 +54,7 @@ CREATE SEQUENCE IF NOT EXISTS public.shifts_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
---
--- Name: shifts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.shifts_id_seq OWNED BY public.shifts.id;
-
-
---
--- Name: users; Type: TABLE; Schema: public; Owner: -
---
 
 CREATE TABLE IF NOT EXISTS public.users (
     id integer NOT NULL,
@@ -122,11 +67,6 @@ CREATE TABLE IF NOT EXISTS public.users (
     is_admin boolean
 );
 
-
---
--- Name: users_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
 CREATE SEQUENCE IF NOT EXISTS public.users_id_seq
     AS integer
     START WITH 1
@@ -135,112 +75,36 @@ CREATE SEQUENCE IF NOT EXISTS public.users_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
---
--- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
 ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
-
-
---
--- Name: shift_types id; Type: DEFAULT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.shift_types ALTER COLUMN id SET DEFAULT nextval('public.shift_types_id_seq'::regclass);
 
-
---
--- Name: shifts id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.shifts ALTER COLUMN id SET DEFAULT nextval('public.shifts_id_seq'::regclass);
 
-
---
--- Name: users id; Type: DEFAULT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
-
-
---
--- Name: shift_types shift_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.shift_types
     ADD CONSTRAINT shift_types_pkey IF NOT EXISTS PRIMARY KEY (id);
 
-
---
--- Name: shifts shifts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.shifts
     ADD CONSTRAINT shifts_pkey IF NOT EXISTS PRIMARY KEY (id);
-
-
---
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey IF NOT EXISTS PRIMARY KEY (id);
 
-
---
--- Name: users_employee_company_unique_idx; Type: INDEX; Schema: public; Owner: -
---
-
 CREATE UNIQUE INDEX users_employee_company_unique_idx ON public.users USING btree (employee_id, company_id);
-
-
---
--- Name: shifts fk_shift_type; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.shifts
     ADD CONSTRAINT fk_shift_type IF NOT EXISTS FOREIGN KEY (shift_type_id) REFERENCES public.shift_types(id) ON DELETE CASCADE;
 
-
---
--- Name: shifts fk_user; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.shifts
     ADD CONSTRAINT fk_user IF NOT EXISTS FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: shifts shifts_shift_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
 
 ALTER TABLE ONLY public.shifts
     ADD CONSTRAINT shifts_shift_type_id_fkey IF NOT EXISTS FOREIGN KEY (shift_type_id) REFERENCES public.shift_types(id);
 
-
---
--- Name: shifts shifts_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
 ALTER TABLE ONLY public.shifts
     ADD CONSTRAINT shifts_user_id_fkey IF NOT EXISTS FOREIGN KEY (user_id) REFERENCES public.users(id);
-
-
---
--- PostgreSQL database dump complete
---
-
-
-
--- Daten (nur fehlende Zeilen werden eingefügt):
---
--- PostgreSQL database dump
---
-
-
--- Dumped from database version 17.6 (Debian 17.6-2.pgdg12+1)
--- Dumped by pg_dump version 17.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -254,28 +118,14 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Data for Name: companies; Type: TABLE DATA; Schema: public; Owner: shift_schedule_db_user
---
-
 INSERT INTO public.companies (id, name, holidays_default) VALUES (1, 'Chronos', 30) ON CONFLICT DO NOTHING;
 INSERT INTO public.companies (id, name, holidays_default) VALUES (2, 'Company GmbH', 28) ON CONFLICT DO NOTHING;
-
-
---
--- Data for Name: shift_types; Type: TABLE DATA; Schema: public; Owner: shift_schedule_db_user
---
 
 INSERT INTO public.shift_types (id, type_name, type_color, type_time_start, type_time_end) VALUES (1, 'Frühschicht', 4367989, '06:00:00', '14:00:00') ON CONFLICT DO NOTHING;
 INSERT INTO public.shift_types (id, type_name, type_color, type_time_start, type_time_end) VALUES (2, 'Spätschicht', 16760576, '14:00:00', '22:00:00') ON CONFLICT DO NOTHING;
 INSERT INTO public.shift_types (id, type_name, type_color, type_time_start, type_time_end) VALUES (3, 'Nachtschicht', 7304056, '22:00:00', '06:00:00') ON CONFLICT DO NOTHING;
 INSERT INTO public.shift_types (id, type_name, type_color, type_time_start, type_time_end) VALUES (4, 'Krank', 15745618, '00:00:00', '24:00:00') ON CONFLICT DO NOTHING;
 INSERT INTO public.shift_types (id, type_name, type_color, type_time_start, type_time_end) VALUES (5, 'Urlaub', 4242352, '00:00:00', '24:00:00') ON CONFLICT DO NOTHING;
-
-
---
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: shift_schedule_db_user
---
 
 INSERT INTO public.users (id, first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES (5, 'Peter', 'Muster', '$2b$10$lCJdIlabK91HIMRMTjQvA.duIqp1/Np1WZM8wK5DiPUU7Smgitst6', 1004, 1, 30, false) ON CONFLICT DO NOTHING;
 INSERT INTO public.users (id, first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES (6, 'Olaf', 'Rad', '$2b$10$pW.G2N8YLtY0t76jui0KAutuDPsCaGCb4ajf1vUsdfmDCxKPaM93K', 1005, 1, 30, false) ON CONFLICT DO NOTHING;
@@ -290,11 +140,6 @@ INSERT INTO public.users (id, first_name, last_name, password, employee_id, comp
 INSERT INTO public.users (id, first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES (3, 'Carsten', 'Stern', '$2a$10$IfTwGWhx/v6Um13v2YdG9.yWvfzWlqreLg0x./aJ0f/dC4b9W4vL.', 1002, 1, 30, true) ON CONFLICT DO NOTHING;
 INSERT INTO public.users (id, first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES (4, 'Hans', 'Test', '$2b$10$dQ7hittq9Ui28c5birItf.ZA8uaogLkL8XWubBqA457u7yMHRl//.', 1011, 2, 25, true) ON CONFLICT DO NOTHING;
 INSERT INTO public.users (id, first_name, last_name, password, employee_id, company_id, holidays, is_admin) VALUES (50, 'Hans', 'Meier', '$2b$10$C1ldW17Kknmx9SFPK095uuCyB.0imEsI.0JI7bS0JNE7AAsjZuQKC', 1012, 1, 30, false) ON CONFLICT DO NOTHING;
-
-
---
--- Data for Name: shifts; Type: TABLE DATA; Schema: public; Owner: shift_schedule_db_user
---
 
 INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES (161, '2025-06-10', 5, 1) ON CONFLICT DO NOTHING;
 INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES (162, '2025-06-11', 4, 1) ON CONFLICT DO NOTHING;
@@ -1324,30 +1169,9 @@ INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES (1259,
 INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES (1260, '2025-12-31', 3, 1) ON CONFLICT DO NOTHING;
 INSERT INTO public.shifts (id, shift_date, shift_type_id, user_id) VALUES (1270, '2025-11-07', 4, 3) ON CONFLICT DO NOTHING;
 
-
---
--- Name: shift_types_id_seq; Type: SEQUENCE SET; Schema: public; Owner: shift_schedule_db_user
---
-
 SELECT pg_catalog.setval('public.shift_types_id_seq', 5, true);
-
-
---
--- Name: shifts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: shift_schedule_db_user
---
 
 SELECT pg_catalog.setval('public.shifts_id_seq', 1270, true);
 
-
---
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: shift_schedule_db_user
---
-
 SELECT pg_catalog.setval('public.users_id_seq', 50, true);
-
-
---
--- PostgreSQL database dump complete
---
-
 
