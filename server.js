@@ -30,15 +30,23 @@ async function runSeed() {
   const seedFile = './assets/db/seed1.sql';
   try {
     const data = await fs.promises.readFile(seedFile, 'utf8');
-    const statements = data.split(';').filter(statement => statement.trim() !== '');
+
+    // remove SQL line comments (-- ...) and block comments (/* ... */)
+    const withoutLineComments = data.replace(/(^|\r?\n)\s*--.*(\r?\n|$)/g, '\n');
+    const withoutComments = withoutLineComments.replace(/\/\*[\s\S]*?\*\//g, '\n');
+
+    // split on semicolon, trim and filter empty statements
+    const statements = withoutComments
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
     const client = await pool.connect();
     try {
       console.log('🚀 Starting background seed...');
       await client.query('BEGIN');
       for (const statement of statements) {
-        if (statement.trim()) {
-          await client.query(statement);
-        }
+        await client.query(statement);
       }
       await client.query('COMMIT');
       console.log('✅ Background seed successful.');
