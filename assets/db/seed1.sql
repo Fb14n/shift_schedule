@@ -92,8 +92,6 @@ ALTER TABLE ONLY public.shifts
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
-CREATE UNIQUE INDEX users_employee_company_unique_idx ON public.users USING btree (employee_id, company_id);
-
 ALTER TABLE ONLY public.shifts
     ADD CONSTRAINT fk_shift_type FOREIGN KEY (shift_type_id) REFERENCES public.shift_types(id) ON DELETE CASCADE;
 
@@ -105,6 +103,17 @@ ALTER TABLE ONLY public.shifts
 
 ALTER TABLE ONLY public.shifts
     ADD CONSTRAINT shifts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_index i ON i.indexrelid = c.oid
+        WHERE c.relname = 'users_employee_company_unique_idx'
+    ) THEN
+        CREATE UNIQUE INDEX users_employee_company_unique_idx ON public.users USING btree (employee_id, company_id);;
+    END IF;
+END $$;
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;

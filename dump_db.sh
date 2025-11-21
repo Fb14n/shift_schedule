@@ -7,8 +7,6 @@ fi
 
 OUTPUT_FILE=assets/db/seed1.sql
 
-# Achtung: Verwende hier nicht die tatsächlichen Werte, falls diese vertraulich sind.
-# Die Platzhalter sind im Skript ok, aber in der realen Datei sollten sie geschützt werden.
 DB_USER='shift_schedule_db_user'
 DB_PASSWORD='8QCdzFCFFC6NWcCcVnnxfNfo6ZpqbFSw'
 DB_HOST='dpg-d3vr2tili9vc73cub46g-a.frankfurt-postgres.render.com'
@@ -21,6 +19,7 @@ export PGPASSWORD=$DB_PASSWORD
 
 TEMP_SCHEMA="assets/db/_schema.sql"
 TEMP_DATA="assets/db/_data.sql"
+TEMP_CONSTRAINTS="assets/db/_constraints_dynamic.sql"
 
 # 1) SCHEMA ohne Drops exportieren
 pg_dump \
@@ -46,7 +45,62 @@ pg_dump \
 
 unset PGPASSWORD
 
-echo "🔧 Patche Schema zu 'IF NOT EXISTS' für CREATE-Anweisungen..."
+# --- DYNAMISCHE ERSTELLUNG DER CONSTRAINTS ---
+
+echo "🔧 Erstelle dynamische, idempotente DO-Blöcke für Constraints..."
+
+# Lösche alte dynamische Datei
+rm -f "$TEMP_CONSTRAINTS"
+
+# Extrahieren, Transformieren und Speichern von ALTER TABLE ADD CONSTRAINT (Primary/Foreign/Check/Unique)
+# Regex erfasst den Constraint-Namen: ADD CONSTRAINT (name)
+grep -E '^ALTER TABLE ONLY.*ADD CONSTRAINT' "$TEMP_SCHEMA" | while read line; do
+    # Den CONSTRAINT-Namen extrahieren
+    CONSTRAINT_NAME=$(echo "$line" | sed -E 's/.*ADD CONSTRAINT ([a-zA-Z0-9_]+) .*/\1/')
+    # Die Tabelle extrahieren (zwischen 'ONLY ' und ' ADD')
+    TABLE_NAME=$(echo "$line" | sed -E 's/^ALTER TABLE ONLY (.*) ADD CONSTRAINT.*/\1/')
+
+    # Den DO-Block in die temporäre Constraints-Datei schreiben
+    cat << EOF >> "$TEMP_CONSTRAINTS"
+DO \$\$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = '$CONSTRAINT_NAME'
+        AND conrelid = '$TABLE_NAME'::regclass
+    ) THEN
+        $line;
+    END IF;
+END \$\$;
+
+EOF
+done
+
+# Extrahieren, Transformieren und Speichern von CREATE UNIQUE INDEX
+# Regex erfasst den Index-Namen: CREATE UNIQUE INDEX (name)
+grep -E '^CREATE UNIQUE INDEX' "$TEMP_SCHEMA" | while read line; do
+    # Den INDEX-Namen extrahieren
+    INDEX_NAME=$(echo "$line" | sed -E 's/CREATE UNIQUE INDEX ([a-zA-Z0-9_]+) .*/\1/')
+
+    # Den DO-Block für UNIQUE INDEX in die temporäre Constraints-Datei schreiben
+    cat << EOF >> "$TEMP_CONSTRAINTS"
+DO \$\$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_index i ON i.indexrelid = c.oid
+        WHERE c.relname = '$INDEX_NAME'
+    ) THEN
+        $line;
+    END IF;
+END \$\$;
+
+EOF
+done
+
+# --- BEREINIGUNG DER SCHEMA-DATEI ---
+
+echo "🔧 Bereinige Schema-Dump (IF NOT EXISTS und entferne Constraints/Indizes)..."
 
 # CREATE TABLE -> CREATE TABLE IF NOT EXISTS
 sed -i 's/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g' "$TEMP_SCHEMA"
@@ -54,18 +108,25 @@ sed -i 's/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g' "$TEMP_SCHEMA"
 # Sequences safe machen
 sed -i 's/CREATE SEQUENCE /CREATE SEQUENCE IF NOT EXISTS /g' "$TEMP_SCHEMA"
 
-# *** ENTFERNT: Die folgende Zeile wurde entfernt, da sie den Fehler 'syntax error at or near "IF"' verursachte.
-# sed -i 's/ADD CONSTRAINT \([a-zA-Z0-9_]*\) /ADD CONSTRAINT \1 IF NOT EXISTS /g' "$TEMP_SCHEMA"
+# Entferne alle originalen ALTER TABLE ... ADD CONSTRAINT Zeilen
+sed -i '/^ALTER TABLE ONLY.*ADD CONSTRAINT/d' "$TEMP_SCHEMA"
+
+# Entferne alle originalen CREATE UNIQUE INDEX Zeilen
+sed -i '/^CREATE UNIQUE INDEX/d' "$TEMP_SCHEMA"
+
 
 echo "🔧 Patche INSERTs (ON CONFLICT DO NOTHING)..."
 
 # Erstens: entferne pauschale Anhänge (alte Ausgaben)
 sed -i 's/);$/) ON CONFLICT DO NOTHING;/g' "$TEMP_DATA"
 
-echo "🔧 Baue finale Seed-Datei und bereinige Metadaten..."
+echo "🔧 Baue finale Seed-Datei (Schema, Constraints (dynamisch), Daten)..."
 
-# 1) Füge Schema und Data zusammen in eine Rohdatei
-cat "$TEMP_SCHEMA" "$TEMP_DATA" > "${OUTPUT_FILE}.raw"
+# 1) Füge Schema (ohne Constraints), dynamische Constraints und Data zusammen
+cat "$TEMP_SCHEMA" "$TEMP_CONSTRAINTS" "$TEMP_DATA" > "${OUTPUT_FILE}.raw"
+
+
+# --- ALLGEMEINE BEREINIGUNG ---
 
 # 2) Entferne Blockkommentare (/* ... */) robust mit perl (multiline)
 if command -v perl >/dev/null 2>&1; then
@@ -76,7 +137,6 @@ else
 fi
 
 # 3) Entferne Zeilen-Kommentare die mit -- beginnen (nach optionalem Whitespace).
-#    Dies entfernt die fehlerhaften Metadaten-Zeilen, z.B. "-- Name: public; Type: SCHEMA..."
 sed -E '/^[[:space:]]*--/d' "${OUTPUT_FILE}.noblock" > "${OUTPUT_FILE}.nocomments"
 
 # 4) Entferne psql meta-commands (\restrict / \unrestrict) falls noch vorhanden
@@ -85,7 +145,7 @@ sed -E '/^\\restrict/d' "${OUTPUT_FILE}.nocomments" | sed -E '/^\\unrestrict/d' 
 # 5) Entferne überflüssige leere Zeilen (zusammenfassen auf maximal eine leere Zeile)
 awk 'NF==0{ if(blank==0){ print; blank=1 } next } { blank=0; print }' "${OUTPUT_FILE}.cleaned" > "${OUTPUT_FILE}.tmp"
 
-# 6) Entferne fälschliche "ON CONFLICT DO NOTHING" in SELECT-Zeilen (falls vorhanden)
+# 6) Entferne fälschliche "ON CONFLICT DO NOTHING" in SELECT-Zeilen
 sed -i "/^[[:space:]]*SELECT[[:space:]]/ s/ ON CONFLICT DO NOTHING//g" "${OUTPUT_FILE}.tmp"
 
 # 7) Füge "ON CONFLICT DO NOTHING" nur bei INSERT-Zeilen hinzu, die es noch nicht haben
@@ -98,6 +158,6 @@ awk '{
 
 # Cleanup temporäre Dateien
 rm -f "${OUTPUT_FILE}.raw" "${OUTPUT_FILE}.noblock" "${OUTPUT_FILE}.nocomments" "${OUTPUT_FILE}.cleaned" "${OUTPUT_FILE}.tmp"
-rm -f "$TEMP_SCHEMA" "$TEMP_DATA"
+rm -f "$TEMP_SCHEMA" "$TEMP_DATA" "$TEMP_CONSTRAINTS"
 
 echo "✅ Fertig! Seed-Datei erstellt: ${OUTPUT_FILE}"
