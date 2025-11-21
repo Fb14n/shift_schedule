@@ -138,5 +138,3 @@ Dockerfile
 dump_db.sh
 init-seed.sh
 update-seed.sh
-package.json
-package-lock.json
