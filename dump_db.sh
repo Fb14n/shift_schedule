@@ -1,55 +1,77 @@
-    # Laden der Umgebungsvariablen aus der .env-Datei
-    # Stellt sicher, dass das Skript die gleichen DB-Zugangsdaten wie Ihr Server verwendet
+    # Load env
     if [ -f .env ]; then
       export $(cat .env | sed 's/#.*//g' | xargs)
     fi
 
-    # --- Konfiguration ---
-    # Zieldatei für den SQL-Dump
     OUTPUT_FILE="assets/db/seed1.sql"
 
-    # PostgreSQL-Verbindungsparameter
-    # Diese werden aus den Umgebungsvariablen (process.env in server.js) übernommen
     DB_USER='shift_schedule_db_user'
     DB_PASSWORD='8QCdzFCFFC6NWcCcVnnxfNfo6ZpqbFSw'
     DB_HOST='dpg-d3vr2tili9vc73cub46g-a.frankfurt-postgres.render.com'
     DB_PORT='5432'
     DB_NAME='shift_schedule_db'
 
-    # --- pg_dump Befehl ---
-    echo "🚀 Erstelle einen Dump der Datenbank '${DB_NAME}' auf Host '${DB_HOST}'..."
+    echo "🚀 Erstelle IDENTITY-SAFE Seed-Dump für '${DB_NAME}'..."
 
-    # Wir setzen das Passwort über eine Umgebungsvariable, damit es nicht im Prozessbaum sichtbar ist.
     export PGPASSWORD=$DB_PASSWORD
 
-    # Führt pg_dump aus und speichert das Ergebnis in der Zieldatei.
-    # --clean: Fügt 'DROP TABLE' Anweisungen hinzu.
-    # --if-exists: Verhindert Fehler, wenn die Tabellen nicht existieren.
-    # --inserts: Nutzt 'INSERT' anstelle von 'COPY', was portabler ist.
+    TEMP_SCHEMA="assets/db/_schema.sql"
+    TEMP_DATA="assets/db/_data.sql"
+
+    # 1) SCHEMA ohne Drops exportieren
     pg_dump \
       --host=$DB_HOST \
       --port=$DB_PORT \
       --username=$DB_USER \
       --dbname=$DB_NAME \
-      --clean \
-      --if-exists \
-      --inserts \
-      --file=$OUTPUT_FILE
+      --schema-only \
+      --no-owner \
+      --no-privileges \
+      --file="$TEMP_SCHEMA"
 
-    # Passwort-Variable wieder löschen
+    # 2) DATA mit INSERTS exportieren
+    pg_dump \
+      --host=$DB_HOST \
+      --port=$DB_PORT \
+      --username=$DB_USER \
+      --dbname=$DB_NAME \
+      --data-only \
+      --inserts \
+      --column-inserts \
+      --file="$TEMP_DATA"
+
     unset PGPASSWORD
 
-    # --- Ergebnis ---
-    if [ $? -eq 0 ]; then
-      echo "✅ Datenbank-Dump erfolgreich erstellt. Bereinige die Datei..."
+    echo "🔧 Patche Schema zu 'IF NOT EXISTS'..."
 
-        # NEU: Entfernt die \restrict und \unrestricted Zeilen aus der erstellten Datei.
-        # Funktioniert sowohl auf Linux/macOS (sed) als auch unter Windows mit Git Bash.
-        sed -i '/^\\restrict/d' "$OUTPUT_FILE"
-        sed -i '/^\\unrestrict/d' "$OUTPUT_FILE"
+    # CREATE TABLE -> CREATE TABLE IF NOT EXISTS
+    sed -i 's/CREATE TABLE /CREATE TABLE IF NOT EXISTS /g' "$TEMP_SCHEMA"
 
-        echo "✅ Datei '${OUTPUT_FILE}' wurde bereinigt und ist einsatzbereit."
-      else
-        echo "❌ Fehler beim Erstellen des Datenbank-Dumps."
-        exit 1
-      fi
+    # Sequences safe machen
+    sed -i 's/CREATE SEQUENCE /CREATE SEQUENCE IF NOT EXISTS /g' "$TEMP_SCHEMA"
+
+    # ALTER TABLE ADD CONSTRAINT – safe Version:
+    sed -i 's/ADD CONSTRAINT \([a-zA-Z0-9_]*\) /ADD CONSTRAINT \1 IF NOT EXISTS /g' "$TEMP_SCHEMA"
+
+    echo "🔧 Patche INSERTs (ON CONFLICT DO NOTHING)..."
+
+    sed -i 's/);$/) ON CONFLICT DO NOTHING;/g' "$TEMP_DATA"
+
+    echo "🔧 Baue finale Seed-Datei..."
+
+    {
+      echo "-- SAFE SEED FILE (IDEMPOTENT)"
+      echo "-- Struktur (nur wenn nicht vorhanden):"
+      cat "$TEMP_SCHEMA"
+      echo ""
+      echo "-- Daten (nur fehlende Zeilen werden eingefügt):"
+      cat "$TEMP_DATA"
+    } > "$OUTPUT_FILE"
+
+    sed -i '/^\\restrict/d' "$OUTPUT_FILE"
+    sed -i '/^\\unrestrict/d' "$OUTPUT_FILE"
+    rm "$TEMP_SCHEMA" "$TEMP_DATA"
+
+
+
+    echo "✅ Fertig! Seed-Datei erstellt: $OUTPUT_FILE"

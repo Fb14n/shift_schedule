@@ -27,7 +27,7 @@ pool.connect()
 const JWT_SECRET = process.env.JWT_SECRET || "secret123";
 
 async function runSeed() {
-  const seedFile = './assets/db/seed.sql';
+  const seedFile = './assets/db/seed1.sql';
   try {
     const data = await fs.promises.readFile(seedFile, 'utf8');
     const statements = data.split(';').filter(statement => statement.trim() !== '');
