@@ -84,27 +84,27 @@ ALTER TABLE ONLY public.shifts ALTER COLUMN id SET DEFAULT nextval('public.shift
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
 ALTER TABLE ONLY public.shift_types
-    ADD CONSTRAINT shift_types_pkey IF NOT EXISTS PRIMARY KEY (id);
+    ADD CONSTRAINT shift_types_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.shifts
-    ADD CONSTRAINT shifts_pkey IF NOT EXISTS PRIMARY KEY (id);
+    ADD CONSTRAINT shifts_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pkey IF NOT EXISTS PRIMARY KEY (id);
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
 CREATE UNIQUE INDEX users_employee_company_unique_idx ON public.users USING btree (employee_id, company_id);
 
 ALTER TABLE ONLY public.shifts
-    ADD CONSTRAINT fk_shift_type IF NOT EXISTS FOREIGN KEY (shift_type_id) REFERENCES public.shift_types(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_shift_type FOREIGN KEY (shift_type_id) REFERENCES public.shift_types(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.shifts
-    ADD CONSTRAINT fk_user IF NOT EXISTS FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.shifts
-    ADD CONSTRAINT shifts_shift_type_id_fkey IF NOT EXISTS FOREIGN KEY (shift_type_id) REFERENCES public.shift_types(id);
+    ADD CONSTRAINT shifts_shift_type_id_fkey FOREIGN KEY (shift_type_id) REFERENCES public.shift_types(id);
 
 ALTER TABLE ONLY public.shifts
-    ADD CONSTRAINT shifts_user_id_fkey IF NOT EXISTS FOREIGN KEY (user_id) REFERENCES public.users(id);
+    ADD CONSTRAINT shifts_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
